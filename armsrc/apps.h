@@ -197,6 +197,8 @@ size_t	CreateAPDU( uint8_t *datain, size_t len, uint8_t *dataout);
 void 	OnSuccess();
 void 	OnError(uint8_t reason);
 
+//emvcmd.h
+
 
 
 
@@ -227,5 +229,8 @@ bool cmd_receive(UsbCommand* cmd);
 bool cmd_send(uint32_t cmd, uint32_t arg0, uint32_t arg1, uint32_t arg2, void* data, size_t len);
 
 /// util.h
+
+//EMV functions emvcmd.h
+void EMVTransaction(void);
 
 #endif

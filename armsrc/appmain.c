@@ -885,6 +885,11 @@ void UsbPacketReceived(uint8_t *packet, int len)
 			break;
 
 #endif
+#ifdef WITH_EMV
+		case CMD_EMV_TRANSACTION:
+			EMVTransaction();
+			break;
+#endif
 
 #ifdef WITH_ICLASS
 		// Makes use of ISO14443a FPGA Firmware
@@ -899,9 +904,6 @@ void UsbPacketReceived(uint8_t *packet, int len)
 			break;
 		case CMD_READER_ICLASS_REPLAY:
 		    ReaderIClass_Replay(c->arg[0], c->d.asBytes);
-			break;
-	case CMD_ICLASS_EML_MEMSET:
-			emlSet(c->d.asBytes,c->arg[0], c->arg[1]);
 			break;
 #endif
 

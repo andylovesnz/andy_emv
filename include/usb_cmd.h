@@ -131,7 +131,6 @@ typedef struct{
 #define CMD_READER_ICLASS                                                 0x0394
 #define CMD_READER_ICLASS_REPLAY					  					  0x0395
 #define CMD_ICLASS_ISO14443A_WRITE										  0x0397
-#define CMD_ICLASS_EML_MEMSET                                             0x0398
 
 // For measurements of the antenna tuning
 #define CMD_MEASURE_ANTENNA_TUNING                                        0x0400
@@ -170,6 +169,9 @@ typedef struct{
 #define CMD_MIFARE_CHKKEYS                                                0x0623
 
 #define CMD_MIFARE_SNIFFER                                                0x0630
+
+#define CMD_EMV_TRANSACTION                                               0x0640
+
 //ultralightC
 #define CMD_MIFAREUC_AUTH1						                          0x0724
 #define CMD_MIFAREUC_AUTH2						                          0x0725

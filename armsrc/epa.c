@@ -180,6 +180,8 @@ int EPA_Read_CardAccess(uint8_t *buffer, size_t max_length)
 	// select the file EF.CardAccess
 	rapdu_length = iso14_apdu((uint8_t *)apdu_select_binary_cardaccess,
 	                          sizeof(apdu_select_binary_cardaccess),
+                              false,
+                              0,
 	                          response_apdu);
 	if (rapdu_length != 6
 	    || response_apdu[rapdu_length - 4] != 0x90
@@ -192,6 +194,8 @@ int EPA_Read_CardAccess(uint8_t *buffer, size_t max_length)
 	// read the file
 	rapdu_length = iso14_apdu((uint8_t *)apdu_read_binary,
 	                          sizeof(apdu_read_binary),
+                              false,
+                              0,
 	                          response_apdu);
 	if (rapdu_length <= 6
 	    || response_apdu[rapdu_length - 4] != 0x90
@@ -325,6 +329,8 @@ int EPA_PACE_Get_Nonce(uint8_t requested_length, uint8_t *nonce)
 	uint8_t response_apdu[262];
 	int send_return = iso14_apdu(apdu,
 	                             sizeof(apdu),
+                                 false,
+                                 0,
 	                             response_apdu);
 	// check if the command succeeded
 	if (send_return < 6
@@ -396,6 +402,8 @@ int EPA_PACE_MSE_Set_AT(pace_version_info_t pace_version_info, uint8_t password)
 	uint8_t response_apdu[6];
 	int send_return = iso14_apdu(apdu,
 	                             apdu_length,
+                                 false,
+                                 0,
 	                             response_apdu);
 	// check if the command succeeded
 	if (send_return != 6

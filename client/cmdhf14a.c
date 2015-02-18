@@ -633,6 +633,14 @@ int CmdHF14ACmdRaw(const char *cmd) {
     } // if reply
     return 0;
 }
+int CmdHF14AEMVTransaction(const char *Cmd)
+{
+    UsbCommand c = {CMD_EMV_TRANSACTION, {0, 0, 0}};
+    SendCommand(&c);
+    return 0;
+}
+
+
 
 static void waitCmd(uint8_t iSelect)
 {
@@ -670,6 +678,7 @@ static command_t CommandTable[] =
   {"sim",    CmdHF14ASim,          0, "<UID> -- Simulate ISO 14443a tag"},
   {"snoop",  CmdHF14ASnoop,        0, "Eavesdrop ISO 14443 Type A"},
   {"raw",    CmdHF14ACmdRaw,       0, "Send raw hex data to tag"},
+  {"emv",    CmdHF14AEMVTransaction,    0, "Perform EMV Reader Transaction"},
   {NULL, NULL, 0, NULL}
 };
 

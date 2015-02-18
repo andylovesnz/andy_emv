@@ -82,8 +82,15 @@ extern void ReaderTransmitPar(uint8_t *frame, uint16_t len, uint8_t *par, uint32
 extern int ReaderReceive(uint8_t *receivedAnswer, uint8_t *par);
 
 extern void iso14443a_setup(uint8_t fpga_minor_mode);
-extern int iso14_apdu(uint8_t *cmd, uint16_t cmd_len, void *data);
+/*Peter Fillmore 2015 - added card id specifier*/
+extern int iso14_apdu(uint8_t *cmd, uint16_t cmd_len,bool useCID, uint8_t CID, void *data);
 extern int iso14443a_select_card(uint8_t *uid_ptr, iso14a_card_select_t *resp_data, uint32_t *cuid_ptr);
 extern void iso14a_set_trigger(bool enable);
 
+//added external reference for EMV
+extern /*static*/ int EmGetCmd(uint8_t *received, uint16_t *len, uint8_t *parity);
+extern int EmSendCmd(uint8_t *resp, uint16_t respLen);
+extern int EmSendCmdEx(uint8_t *resp, uint16_t respLen, bool correctionNeeded);
+//logging functions
+int LogReceiveTrace();
 #endif /* __ISO14443A_H */

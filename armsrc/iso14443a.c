@@ -838,8 +838,7 @@ static int EmSendCmd14443aRaw(uint8_t *resp, uint16_t respLen, bool correctionNe
 int EmSend4bitEx(uint8_t resp, bool correctionNeeded);
 int EmSend4bit(uint8_t resp);
 int EmSendCmdExPar(uint8_t *resp, uint16_t respLen, bool correctionNeeded, uint8_t *par);
-int EmSendCmdEx(uint8_t *resp, uint16_t respLen, bool correctionNeeded);
-int EmSendCmd(uint8_t *resp, uint16_t respLen);
+//int EmSendCmd(uint8_t *resp, uint16_t respLen);
 int EmSendCmdPar(uint8_t *resp, uint16_t respLen, uint8_t *par);
 bool EmLogTrace(uint8_t *reader_data, uint16_t reader_len, uint32_t reader_StartTime, uint32_t reader_EndTime, uint8_t *reader_Parity,
 				 uint8_t *tag_data, uint16_t tag_len, uint32_t tag_StartTime, uint32_t tag_EndTime, uint8_t *tag_Parity);
@@ -1388,7 +1387,7 @@ void CodeIso14443aAsReaderPar(const uint8_t *cmd, uint16_t len, const uint8_t *p
 // Stop when button is pressed (return 1) or field was gone (return 2)
 // Or return 0 when command is captured
 //-----------------------------------------------------------------------------
-static int EmGetCmd(uint8_t *received, uint16_t *len, uint8_t *parity)
+/*static*/ int EmGetCmd(uint8_t *received, uint16_t *len, uint8_t *parity)
 {
 	*len = 0;
 
@@ -1853,27 +1852,83 @@ void iso14443a_setup(uint8_t fpga_minor_mode) {
 	NextTransferTime = 2*DELAY_ARM2AIR_AS_READER;
 	iso14a_set_timeout(1050); // 10ms default
 }
+/* Peter Fillmore 2015
+Added card id field to the function
+ info from ISO14443A standard
+b1 = Block Number
+b2 = RFU (always 1)
+b3 = depends on block
+b4 = Card ID following if set to 1
+b5 = depends on block type
+b6 = depends on block type
+b7,b8 = block type.
 
-int iso14_apdu(uint8_t *cmd, uint16_t cmd_len, void *data) {
+Coding of I-BLOCK:
+b8 b7 b6 b5 b4 b3 b2 b1
+0  0  0  x  x  x  1  x
+b5 = chaining bit
+
+Coding of R-block:
+b8 b7 b6 b5 b4 b3 b2 b1
+1  0  1  x  x  0  1  x
+b5 = ACK/NACK
+
+Coding of S-block:
+b8 b7 b6 b5 b4 b3 b2 b1
+1  1  x  x  x  0  1  0 
+b6,b6 = DESELECT
+        WTX 
+*/      
+int iso14_apdu(uint8_t *cmd, uint16_t cmd_len,bool useCID, uint8_t CID, void *data) {
 	uint8_t parity[MAX_PARITY_SIZE];
 	uint8_t real_cmd[cmd_len+4];
-	real_cmd[0] = 0x0a; //I-Block
+    uint8_t total_len; //total length of the command	
+    if(useCID){
+        total_len = cmd_len+4;
+    }else{
+        total_len = cmd_len+3;
+    }
+ 
+    if(useCID){
+        real_cmd[0] = 0x0a; //set CID bit in I-Block 
+        real_cmd[1] = CID; 
+    } else {
+        real_cmd[0] = 0x02;
+    } 
 	// put block number into the PCB
 	real_cmd[0] |= iso14_pcb_blocknum;
-	real_cmd[1] = 0x00; //CID: 0 //FIXME: allow multiple selected cards
-	memcpy(real_cmd+2, cmd, cmd_len);
-	AppendCrc14443a(real_cmd,cmd_len+2);
- 
-	ReaderTransmit(real_cmd, cmd_len+4, NULL);
-	size_t len = ReaderReceive(data, parity);
+    //default to card id of 00	
+    //real_cmd[1] = 0x00; //CID: 0 //FIXME: allow multiple selected cards
+    if(useCID){ //use CID	
+        memcpy(real_cmd+2, cmd, cmd_len);
+        AppendCrc14443a(real_cmd,cmd_len+2);
+    } else {
+	    memcpy(real_cmd+1, cmd, cmd_len);
+        AppendCrc14443a(real_cmd,cmd_len+1);
+    }	    
+    ReaderTransmit(real_cmd, total_len, NULL);
+	
+    size_t len = ReaderReceive(data, parity);
 	uint8_t *data_bytes = (uint8_t *) data;
-	if (!len)
+     	
+    if (!len)
 		return 0; //DATA LINK ERROR
 	// if we received an I- or R(ACK)-Block with a block number equal to the
 	// current block number, toggle the current block number
-	else if (len >= 4 // PCB+CID+CRC = 4 bytes
-	         && ((data_bytes[0] & 0xC0) == 0 // I-Block
-	             || (data_bytes[0] & 0xD0) == 0x80) // R-Block with ACK bit set to 0
+    
+    if((data_bytes[0] & 0xF2) == 0xF2) //WTX requested
+        {
+            //Transmit WTX back (what we received)
+            ReaderTransmit(data_bytes, len, NULL);
+            //retrieve the result again 
+            len = ReaderReceive(data,parity);
+            data_bytes = data;     
+        }
+    if (len >= 4 // PCB+CID+CRC = 4 bytes
+	         //&& ((data_bytes[0] & 0xC0) == 0 // I-Block
+	         && ((data_bytes[0] & 0x02) == 0x02 // actual I-BLOCK ignore cardid bit 
+	             //|| (data_bytes[0] & 0xD0) == 0x80) // R-Block with ACK bit set to 0
+	             || (data_bytes[0] & 0xA2) == 0xA2) // Actual R-Block with ACK bit set to 0, ignore cardID bit
 	         && (data_bytes[0] & 0x01) == iso14_pcb_blocknum) // equal block numbers
 	{
 		iso14_pcb_blocknum ^= 1;
@@ -1920,7 +1975,7 @@ void ReaderIso14443a(UsbCommand *c)
 	}
 
 	if(param & ISO14A_APDU) {
-		arg0 = iso14_apdu(cmd, len, buf);
+		arg0 = iso14_apdu(cmd, len, false, 0, buf);
 		cmd_send(CMD_ACK,arg0,0,0,buf,sizeof(buf));
 	}
 
@@ -2839,4 +2894,22 @@ void RAMFUNC SniffMifare(uint8_t param) {
 	
 	Dbprintf("maxDataLen=%x, Uart.state=%x, Uart.len=%x", maxDataLen, Uart.state, Uart.len);
 	LEDsoff();
+}
+//Logging functions
+int LogReceiveTrace(){
+    return LogTrace(Uart.output,
+        Uart.len, 
+		Uart.startTime*16 - DELAY_READER_AIR2ARM_AS_SNIFFER,
+		Uart.endTime*16 - DELAY_READER_AIR2ARM_AS_SNIFFER,
+	    Uart.parity, 
+		TRUE);
+}
+
+int LogTransmitTrace(){
+   return LogTrace(Demod.output,
+        Demod.len, 
+		Demod.startTime*16 - DELAY_READER_AIR2ARM_AS_SNIFFER,
+		Demod.endTime*16 - DELAY_READER_AIR2ARM_AS_SNIFFER,
+	    Demod.parity, 
+		FALSE);  
 }

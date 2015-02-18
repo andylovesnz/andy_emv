@@ -57,7 +57,15 @@ Ultralight C
 	A0 = Compatibility Write (to accomodate MIFARE commands)
 	1A = Step1 Authenticate
 	AF = Step2 Authenticate
-
+EMV
+    1st byte indicates PCB byte, either 02 or 03
+    2nd byte CLA
+    3rd byte INS
+    80 2A = COMPUTE CRYPTOGRAPHIC CHECKSUM
+    80 AE = GENERATE AC
+    80 A8 = GET PROCESSING OPTIONS
+    00 B2 = READ RECORD
+    00 A4 = SELECT 
 
 ISO14443B
 	05 = REQB
@@ -144,6 +152,8 @@ NXP/Philips CUSTOM COMMANDS
 #define ISO14443A_CMD_WRITEBLOCK 0xA0 // or 0xA2 ?
 #define ISO14443A_CMD_HALT       0x50
 #define ISO14443A_CMD_RATS       0xE0
+#define ISO14443A_CMD_WTX        0xF2
+//#define ISO14443A_CMD_DESELECT   0xC2
 
 #define MIFARE_AUTH_KEYA	    0x60
 #define MIFARE_AUTH_KEYB	    0x61
@@ -156,6 +166,9 @@ NXP/Philips CUSTOM COMMANDS
 #define MIFARE_ULC_WRITE        0xA0
 #define MIFARE_ULC_AUTH_1       0x1A
 #define MIFARE_ULC_AUTH_2        0xAF
+
+#define ISO14443A_I_BLOCK_CLEAR     0x02
+#define ISO14443A_I_BLOCK_SET       0x03
 
 /**
 06 00 = INITIATE
@@ -235,16 +248,42 @@ void annotateIso14443a(char *exp, size_t size, uint8_t* cmd, uint8_t cmdsize)
 	case ISO14443A_CMD_WRITEBLOCK: snprintf(exp,size,"WRITEBLOCK(%d)",cmd[1]); break;
 	case ISO14443A_CMD_HALT:       snprintf(exp,size,"HALT"); break;
 	case ISO14443A_CMD_RATS:       snprintf(exp,size,"RATS"); break;
-	case MIFARE_CMD_INC:          snprintf(exp,size,"INC(%d)",cmd[1]); break;
+    case ISO14443A_CMD_WTX:     	snprintf(exp,size,"WTX"); break;
+    //case ISO14443A_CMD_DESELECT:     	snprintf(exp,size,"DESELECT"); break;
+    case MIFARE_CMD_INC:          snprintf(exp,size,"INC(%d)",cmd[1]); break;
 	case MIFARE_CMD_DEC:          snprintf(exp,size,"DEC(%d)",cmd[1]); break;
 	case MIFARE_CMD_RESTORE:      snprintf(exp,size,"RESTORE(%d)",cmd[1]); break;
 	case MIFARE_CMD_TRANSFER:     snprintf(exp,size,"TRANSFER(%d)",cmd[1]); break;
 	case MIFARE_AUTH_KEYA:        snprintf(exp,size,"AUTH-A(%d)",cmd[1]); break;
 	case MIFARE_AUTH_KEYB:        snprintf(exp,size,"AUTH-B(%d)",cmd[1]); break;
 	case MIFARE_MAGICMODE:        snprintf(exp,size,"MAGIC"); break;
-	default:                      snprintf(exp,size,"?"); break;
+    case ISO14443A_I_BLOCK_CLEAR:
+    case ISO14443A_I_BLOCK_SET:{
+        if(cmd[1] == 0x80){
+            if(cmd[2] == 0x2A){ 
+                snprintf(exp,size,"COMPUTE CRYPTOGRAPHIC CHECKSUM");
+                break;} 
+            else if(cmd[2] == 0xAE){
+                snprintf(exp,size,"GENERATE AC");
+                break;}
+            else if(cmd[2] == 0xA8){
+                snprintf(exp,size,"GET PROCESSING OPTIONS");
+                break;}
+        }
+        else if(cmd[1] == 0x00){
+            if(cmd[2] == 0xB2){
+                snprintf(exp,size,"READ RECORD");
+                break; }
+            else if(cmd[2] == 0xA4){
+                snprintf(exp,size,"SELECT");
+                break;}
+        }
+        break;
+    }
+    default:                      snprintf(exp,size,"?"); break;
 	}
 	return;
+
 }
 
 void annotateIclass(char *exp, size_t size, uint8_t* cmd, uint8_t cmdsize)
