@@ -1,4 +1,4 @@
-//-----------------------------------------------------------------------------
+//---x_buffer_size) {--------------------------------------------------------------------------
 // Merlok - June 2011
 // Gerhard de Koning Gans - May 2008
 // Hagen Fritsch - June 2010
@@ -70,6 +70,13 @@ typedef struct {
 	uint8_t *parity;
 } tUart;
 
+typedef struct {
+  uint8_t* response;
+  size_t   response_n;
+  uint8_t* modulation;
+  size_t   modulation_n;
+  uint32_t ProxToAirDuration;
+} tag_response_info_t;
 
 
 extern byte_t oddparity (const byte_t bt);
@@ -91,6 +98,15 @@ extern void iso14a_set_trigger(bool enable);
 extern /*static*/ int EmGetCmd(uint8_t *received, uint16_t *len, uint8_t *parity);
 extern int EmSendCmd(uint8_t *resp, uint16_t respLen);
 extern int EmSendCmdEx(uint8_t *resp, uint16_t respLen, bool correctionNeeded);
+
+extern bool prepare_allocated_tag_modulation(tag_response_info_t* response_info);
+
+extern bool prepare_tag_modulation(tag_response_info_t* response_info, size_t max_buffer_size);
+
+extern int GetIso14443aCommandFromReader(uint8_t *received, uint8_t *parity, int *len);
+/*static*/ int EmSendCmd14443aRaw(uint8_t *resp, uint16_t respLen, bool correctionNeeded);
 //logging functions
 int LogReceiveTrace();
+int LogSniffTrace(uint16_t tag_len, uint8_t* tag_data,  uint8_t* tag_parity);
+
 #endif /* __ISO14443A_H */

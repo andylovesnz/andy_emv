@@ -6,6 +6,7 @@
 # Makefile for armsrc, see ../common/Makefile.common for common settings
 #-----------------------------------------------------------------------------
 
+
 APP_INCLUDES = apps.h
 
 #remove one of the following defines and comment out the relevant line
@@ -50,6 +51,8 @@ ARMSRC = fpgaloader.c \
 # stdint.h provided locally until GCC 4.5 becomes C99 compliant
 APP_CFLAGS += -I.
 
+$(CFLAGS) += -g3 -gdwarf2
+
 # Do not move this inclusion before the definition of {THUMB,ASM,ARM}SRC
 include ../common/Makefile.common
 
@@ -74,7 +77,6 @@ $(OBJDIR)/osimage.elf: $(OBJDIR)/fullimage.elf
 
 tarbin: $(OBJS)
 	$(TAR) $(TARFLAGS) ../proxmark3-$(platform)-bin.tar $(OBJS:%=armsrc/%) $(OBJS:%.s19=armsrc/%.elf)
-
 
 clean:
 	$(DELETE) $(OBJDIR)$(PATHSEP)*.o

@@ -932,6 +932,7 @@ static void CodeIClassTagAnswer(const uint8_t *cmd, int len)
 	 * */
 
 	int i;
+    // Make sure ToSend has been malloc'ed
 
 	ToSendReset();
 
@@ -956,7 +957,7 @@ static void CodeIClassTagSOF()
 {
 	//So far a dummy implementation, not used
 	//int lastProxToAirDuration =0;
-
+    
 	ToSendReset();
 	// Send SOF
 	ToSend[++ToSendMax] = 0x1D;
@@ -1091,7 +1092,7 @@ int doIClassSimulation(uint8_t csn[], int breakAfterMacReceived, uint8_t *reader
 	uint8_t *receivedCmd = BigBuf_malloc(MAX_FRAME_SIZE);
 	memset(receivedCmd, 0x44, MAX_FRAME_SIZE);
 	int len;
-
+    
 	// Prepare card messages
 	ToSendMax = 0;
 
@@ -1365,6 +1366,7 @@ void CodeIClassCommand(const uint8_t * cmd, int len)
 {
   int i, j, k;
   uint8_t b;
+  
 
   ToSendReset();
 
@@ -1406,7 +1408,9 @@ void ReaderTransmitIClass(uint8_t* frame, int len)
 	int samples = 0;
 
 	// This is tied to other size changes
-	CodeIClassCommand(frame,len);
+    
+     
+    CodeIClassCommand(frame,len);
 
 	// Select the card
 	TransmitIClassCommand(ToSend, ToSendMax, &samples, &wait);

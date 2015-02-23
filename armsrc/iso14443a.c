@@ -707,7 +707,7 @@ void RAMFUNC SnoopIso14443a(uint8_t param) {
 //-----------------------------------------------------------------------------
 static void CodeIso14443aAsTagPar(const uint8_t *cmd, uint16_t len, uint8_t *parity)
 {
-	ToSendReset();
+    ToSendReset();
 
 	// Correction bit, might be removed when not needed
 	ToSendStuffBit(0);
@@ -756,16 +756,22 @@ static void CodeIso14443aAsTagPar(const uint8_t *cmd, uint16_t len, uint8_t *par
 static void CodeIso14443aAsTag(const uint8_t *cmd, uint16_t len)
 {
 	uint8_t par[MAX_PARITY_SIZE];
-	
+     	
 	GetParity(cmd, len, par);
-	CodeIso14443aAsTagPar(cmd, len, par);
+    //Dbprintf("command="); 
+    //Dbhexdump(len,(uint8_t *)cmd,false);
+    //Dbprintf("parity="); 
+    //Dbhexdump(len/8+1, par, false);
+    //uint16_t ToSendMaxBefore = ToSendMax;  
+    CodeIso14443aAsTagPar(cmd, len, par);
+    //Dbprintf("ToSendMaxDelta=%u", ToSendMax - ToSendMaxBefore);
 }
 
 
 static void Code4bitAnswerAsTag(uint8_t cmd)
 {
 	int i;
-
+     
 	ToSendReset();
 
 	// Correction bit, might be removed when not needed
@@ -805,7 +811,7 @@ static void Code4bitAnswerAsTag(uint8_t cmd)
 // Stop when button is pressed
 // Or return TRUE when command is captured
 //-----------------------------------------------------------------------------
-static int GetIso14443aCommandFromReader(uint8_t *received, uint8_t *parity, int *len)
+/*static*/ int GetIso14443aCommandFromReader(uint8_t *received, uint8_t *parity, int *len)
 {
     // Set FPGA mode to "simulated ISO 14443 tag", no modulation (listen
     // only, since we are receiving, not transmitting).
@@ -834,7 +840,7 @@ static int GetIso14443aCommandFromReader(uint8_t *received, uint8_t *parity, int
     }
 }
 
-static int EmSendCmd14443aRaw(uint8_t *resp, uint16_t respLen, bool correctionNeeded);
+/*static*/ int EmSendCmd14443aRaw(uint8_t *resp, uint16_t respLen, bool correctionNeeded);
 int EmSend4bitEx(uint8_t resp, bool correctionNeeded);
 int EmSend4bit(uint8_t resp);
 int EmSendCmdExPar(uint8_t *resp, uint16_t respLen, bool correctionNeeded, uint8_t *par);
@@ -845,6 +851,7 @@ bool EmLogTrace(uint8_t *reader_data, uint16_t reader_len, uint32_t reader_Start
 
 static uint8_t* free_buffer_pointer;
 
+/*
 typedef struct {
   uint8_t* response;
   size_t   response_n;
@@ -852,6 +859,7 @@ typedef struct {
   size_t   modulation_n;
   uint32_t ProxToAirDuration;
 } tag_response_info_t;
+*/
 
 bool prepare_tag_modulation(tag_response_info_t* response_info, size_t max_buffer_size) {
 	// Example response, answer to MIFARE Classic read block will be 16 bytes + 2 CRC = 18 bytes
@@ -865,7 +873,7 @@ bool prepare_tag_modulation(tag_response_info_t* response_info, size_t max_buffe
 	//    166 bytes, since every bit that needs to be send costs us a byte
 	//
  
- 
+     
   // Prepare the tag modulation bits from the message
   CodeIso14443aAsTag(response_info->response,response_info->response_n);
   
@@ -896,10 +904,9 @@ bool prepare_tag_modulation(tag_response_info_t* response_info, size_t max_buffe
 bool prepare_allocated_tag_modulation(tag_response_info_t* response_info) {
   // Retrieve and store the current buffer index
   response_info->modulation = free_buffer_pointer;
-  
+   
   // Determine the maximum size we can use from our buffer
   size_t max_buffer_size = ALLOCATED_TAG_MODULATION_BUFFER_SIZE;
-  
   // Forward the prepare tag modulation function to the inner function
   if (prepare_tag_modulation(response_info, max_buffer_size)) {
     // Update the free buffer offset
@@ -1000,8 +1007,17 @@ void SimulateIso14443aTag(int tagType, int uid_1st, int uid_2nd, byte_t* data)
 	// TB(1) = not present. Defaults: FWI = 4 (FWT = 256 * 16 * 2^4 * 1/fc = 4833us), SFGI = 0 (SFG = 256 * 16 * 2^0 * 1/fc = 302us)
 	// TC(1) = 0x02: CID supported, NAD not supported
 	ComputeCrc14443(CRC_14443_A, response6, 4, &response6[4], &response6[5]);
-
-	#define TAG_RESPONSE_COUNT 7
+    //Receive Acknowledge responses differ by PCB byte 
+    uint8_t response7a[] = {0xa3,0x00,0x00};
+    AppendCrc14443a(response7a,1); 
+    uint8_t response7b[] = {0xa2,0x00,0x00};
+    AppendCrc14443a(response7b,1); 
+   
+    //Protocol and parameter selection response, just say yes
+    uint8_t response8[] = {0xd0,0x00,0x00};
+    AppendCrc14443a(response8,1); 
+    //added additional responses for different readers, namely protocol parameter select and Receive acknowledments. - peter fillmore.
+	#define TAG_RESPONSE_COUNT 10 
 	tag_response_info_t responses[TAG_RESPONSE_COUNT] = {
 		{ .response = response1,  .response_n = sizeof(response1)  },  // Answer to request - respond with card type
 		{ .response = response2,  .response_n = sizeof(response2)  },  // Anticollision cascade1 - respond with uid
@@ -1010,8 +1026,16 @@ void SimulateIso14443aTag(int tagType, int uid_1st, int uid_2nd, byte_t* data)
 		{ .response = response3a, .response_n = sizeof(response3a) },  // Acknowledge select - cascade 2
 		{ .response = response5,  .response_n = sizeof(response5)  },  // Authentication answer (random nonce)
 		{ .response = response6,  .response_n = sizeof(response6)  },  // dummy ATS (pseudo-ATR), answer to RATS
-	};
-
+        { .response = response7a, .response_n = sizeof(response7a) },  //R(ACK)0
+        { .response = response7b, .response_n = sizeof(response7b) },  //R(ACK)1
+        { .response = response8, .response_n = sizeof(response8) }, //response to Protocol Parameter Select.
+};
+    //calculated length of predone responses
+    uint16_t allocatedtaglen = 0;
+    for(int i=0;i<TAG_RESPONSE_COUNT;i++){
+        allocatedtaglen += responses[i].response_n;
+    }
+ 
 	// Allocate 512 bytes for the dynamic modulation, created when the reader queries for it
 	// Such a response is less time critical, so we can prepare them on the fly
 	#define DYNAMIC_RESPONSE_BUFFER_SIZE 64
@@ -1030,9 +1054,10 @@ void SimulateIso14443aTag(int tagType, int uid_1st, int uid_2nd, byte_t* data)
 	// allocate buffers:
 	uint8_t *receivedCmd = BigBuf_malloc(MAX_FRAME_SIZE);
 	uint8_t *receivedCmdPar = BigBuf_malloc(MAX_PARITY_SIZE);
-	free_buffer_pointer = BigBuf_malloc(ALLOCATED_TAG_MODULATION_BUFFER_SIZE);
-
-	// clear trace
+	//free_buffer_pointer = BigBuf_malloc(ALLOCATED_TAG_MODULATION_BUFFER_SIZE);
+    free_buffer_pointer = BigBuf_malloc((allocatedtaglen*8) +(allocatedtaglen) + (TAG_RESPONSE_COUNT * 3));
+	
+    // clear trace
 	clear_trace();
 	set_tracing(TRUE);
 
@@ -1084,7 +1109,15 @@ void SimulateIso14443aTag(int tagType, int uid_1st, int uid_2nd, byte_t* data)
 			p_response = &responses[3]; order = 3;
 		} else if(receivedCmd[1] == 0x70 && receivedCmd[0] == 0x95) {	// Received a SELECT (cascade 2)
 			p_response = &responses[4]; order = 30;
-		} else if(receivedCmd[0] == 0x30) {	// Received a (plain) READ
+		} else if(receivedCmd[0] == 0xB2){ //R(ACK)0
+            p_response = &responses[7]; order = 4;
+        } else if(receivedCmd[0] == 0xB3){ //R(ACK)1
+            p_response = &responses[8]; order = 4;
+        }
+        else if(receivedCmd[0] == 0xD0){ //Protocol and parameter selection response
+            p_response = &responses[9]; order = 5;
+        }
+        else if(receivedCmd[0] == 0x30) {	// Received a (plain) READ
 			EmSendCmdEx(data+(4*receivedCmd[1]),16,false);
 			// Dbprintf("Read request from reader: %x %x",receivedCmd[0],receivedCmd[1]);
 			// We already responded, do not send anything with the EmSendCmd14443aRaw() that is called below
@@ -1227,7 +1260,7 @@ void PrepareDelayedTransfer(uint16_t delay)
 	uint8_t bitmask = 0;
 	uint8_t bits_to_shift = 0;
 	uint8_t bits_shifted = 0;
-	
+
 	delay &= 0x07;
 	if (delay) {
 		for (uint16_t i = 0; i < delay; i++) {
@@ -1301,6 +1334,7 @@ void CodeIso14443aBitsAsReaderPar(const uint8_t *cmd, uint16_t bits, const uint8
 	int last;
 	uint8_t b;
 
+    
 	ToSendReset();
 
 	// Start of Communication (Seq. Z)
@@ -1453,7 +1487,7 @@ void CodeIso14443aAsReaderPar(const uint8_t *cmd, uint16_t len, const uint8_t *p
 }
 
 
-static int EmSendCmd14443aRaw(uint8_t *resp, uint16_t respLen, bool correctionNeeded)
+/*static*/ int EmSendCmd14443aRaw(uint8_t *resp, uint16_t respLen, bool correctionNeeded)
 {
 	uint8_t b;
 	uint16_t i = 0;
@@ -1519,7 +1553,8 @@ static int EmSendCmd14443aRaw(uint8_t *resp, uint16_t respLen, bool correctionNe
 
 int EmSend4bitEx(uint8_t resp, bool correctionNeeded){
 	Code4bitAnswerAsTag(resp);
-	int res = EmSendCmd14443aRaw(ToSend, ToSendMax, correctionNeeded);
+    	
+    int res = EmSendCmd14443aRaw(ToSend, ToSendMax, correctionNeeded);
 	// do the tracing for the previous reader request and this tag answer:
 	uint8_t par[1];
 	GetParity(&resp, 1, par);
@@ -1542,7 +1577,8 @@ int EmSend4bit(uint8_t resp){
 
 int EmSendCmdExPar(uint8_t *resp, uint16_t respLen, bool correctionNeeded, uint8_t *par){
 	CodeIso14443aAsTagPar(resp, respLen, par);
-	int res = EmSendCmd14443aRaw(ToSend, ToSendMax, correctionNeeded);
+	
+    int res = EmSendCmd14443aRaw(ToSend, ToSendMax, correctionNeeded);
 	// do the tracing for the previous reader request and this tag answer:
 	EmLogTrace(Uart.output, 
 				Uart.len, 
@@ -1635,7 +1671,8 @@ void ReaderTransmitBitsPar(uint8_t* frame, uint16_t bits, uint8_t *par, uint32_t
 	CodeIso14443aBitsAsReaderPar(frame, bits, par);
   
 	// Send command to tag
-	TransmitFor14443a(ToSend, ToSendMax, timing);
+    	
+    TransmitFor14443a(ToSend, ToSendMax, timing);
 	if(trigger)
 		LED_A_ON();
   
@@ -1850,7 +1887,8 @@ void iso14443a_setup(uint8_t fpga_minor_mode) {
 	DemodReset();
 	UartReset();
 	NextTransferTime = 2*DELAY_ARM2AIR_AS_READER;
-	iso14a_set_timeout(1050); // 10ms default
+	//iso14a_set_timeout(1050); // 10ms default
+	iso14a_set_timeout(4200); // 10ms default
 }
 /* Peter Fillmore 2015
 Added card id field to the function
@@ -2903,6 +2941,20 @@ int LogReceiveTrace(){
 		Uart.endTime*16 - DELAY_READER_AIR2ARM_AS_SNIFFER,
 	    Uart.parity, 
 		TRUE);
+}
+
+int LogSniffTrace(uint16_t tag_len, uint8_t* tag_data,  uint8_t* tag_parity){
+    EmLogTrace(Uart.output, 
+        Uart.len, 
+        Uart.startTime*16-DELAY_AIR2ARM_AS_TAG,
+        Uart.endTime*16-DELAY_AIR2ARM_AS_TAG, 
+        &Uart.parityBits, 
+        tag_data,
+        tag_len, 
+        LastTimeProxToAirStart*16 + DELAY_ARM2AIR_AS_TAG, 
+        (LastTimeProxToAirStart + 1000) * 16 +DELAY_ARM2AIR_AS_TAG,  //fudged this
+        tag_parity);
+    return 0;
 }
 
 int LogTransmitTrace(){

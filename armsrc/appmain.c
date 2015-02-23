@@ -37,8 +37,8 @@
 // is the order in which they go out on the wire.
 //=============================================================================
 
-#define TOSEND_BUFFER_SIZE (9*MAX_FRAME_SIZE + 1 + 1 + 2)  // 8 data bits and 1 parity bit per payload byte, 1 correction bit, 1 SOC bit, 2 EOC bits 
-uint8_t ToSend[TOSEND_BUFFER_SIZE];
+uint8_t ToSend[TOSEND_BUFFER_SIZE]; 
+
 int ToSendMax;
 static int ToSendBit;
 struct common_area common_area __attribute__((section(".commonarea")));
@@ -889,6 +889,8 @@ void UsbPacketReceived(uint8_t *packet, int len)
 		case CMD_EMV_TRANSACTION:
 			EMVTransaction();
 			break;
+        case CMD_EMV_GET_RANDOM_NUM:
+            EMVgetUDOL();
 #endif
 
 #ifdef WITH_ICLASS

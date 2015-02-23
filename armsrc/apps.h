@@ -20,6 +20,10 @@
 #include "../common/crc32.h"
 #include "BigBuf.h"
 
+
+//#define TOSEND_BUFFER_SIZE (9*MAX_FRAME_SIZE + 1 + 1 + 2)
+#define TOSEND_BUFFER_SIZE 4500 
+
 extern const uint8_t OddByteParity[256];
 extern int rsamples;   // = 0;
 extern int tracing;    // = TRUE;
@@ -232,5 +236,6 @@ bool cmd_send(uint32_t cmd, uint32_t arg0, uint32_t arg1, uint32_t arg2, void* d
 
 //EMV functions emvcmd.h
 void EMVTransaction(void);
+void EMVgetUDOL(void);
 
 #endif

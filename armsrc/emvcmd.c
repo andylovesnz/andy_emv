@@ -1230,6 +1230,7 @@ void EMVSim()
 // response to send, and send it.
 //-----------------------------------------------------------------------------
 /*
+
 void EMVFuzz_RATS(uint8_t ratslen, uint8_t* RATS)
 {
     // Enable and clear the trace
@@ -1504,3 +1505,516 @@ void EMVFuzz_PPSE(uint8_t PPSElen, uint8_t* PPSE)
     return;
 }
 */
+
+static uint8_t* free_buffer_pointer;
+
+//function to retrieve random number from the terminal
+//this is supplied in the compute cryptographic checksum command
+void EMVgetUDOL()
+{
+    /* 
+    uint8_t receivedCmd[MAX_FRAME_SIZE];
+    uint8_t receivedCmd_par[MAX_FRAME_SIZE];
+    uint8_t response[MAX_FRAME_SIZE];
+    uint8_t response_par[MAX_FRAME_SIZE];
+`   */
+    //uint8_t* free_buffer_pointer;
+    uint8_t atqa[] = {0x04, 0x00};
+	uint8_t uid0[5] = {0x12,0x34,0x56,0x78,0x9A};
+	uid0[4] = uid0[0] ^ uid0[1] ^ uid0[2] ^ uid0[3];
+    //copy input rats into a buffer
+    uint8_t ratscmd[] = {0x0b, 0x78, 0x80, 0x81, 0x02, 0x4b, 0x4f, 0x4e, 0x41, 0x14, 0x11, 0x8a, 0x76}; 
+	
+	// Prepare the mandatory SAK (for 4 and 7 byte UID)
+	uint8_t sakresponse[3];
+	sakresponse[0] = 0x28;
+	ComputeCrc14443(CRC_14443_A, sakresponse, 1, &sakresponse[1], &sakresponse[2]);
+
+    uint8_t ACK1[] = {0xa3,0x6f,0xc6}; //ACK packets 
+    uint8_t ACK2[] = {0xa2,0x00,0x00};
+    AppendCrc14443a(ACK2, 1);
+    
+    //handle the PPS selection
+    uint8_t PPSR[3] = {0xD0,0x00,0x00};
+    AppendCrc14443a(PPSR, 1);
+/*  
+    //canned EMV responses
+    uint8_t selectPPSE[] = {
+0x6f,0x2f,0x84,0x0e,0x32,0x50,0x41,0x59,
+0x2e,0x53,0x59,0x53,0x2e,0x44,0x44,0x46,
+0x30,0x31,0xa5,0x1d,0xbf,0x0c,0x1a,0x61,
+0x18,0x4f,0x07,0xa0,0x00,0x00,0x00,0x04,
+0x10,0x10,0x50,0x0a,0x4d,0x61,0x73,0x74,
+0x65,0x72,0x43,0x61,0x72,0x64,0x87,0x01,
+0x01,0x90,0x00};
+*/
+    uint8_t selectPPSE[] = {
+0x6f,0x2f,0x84,0x0e,0x32,0x50,0x41,0x59,
+0x2e,0x53,0x59,0x53,0x2e,0x44,0x44,0x46,
+0x30,0x31,0xa5,0x1d,0xbf,0x0c,0x1a,0x61,
+0x18,0x4f,0x07,0xa0,0x00,0x00,0x00,0x04,
+0x18,0x4f,0x07,0xa0,0x00,0x00,0x00,0x04,
+0x10,0x10,0x50,0x0a,0x4d,0x61,0x73,0x74,
+0x65,0x72,0x43,0x61,0x72,0x64,0x90,0x00};
+//0x30,0x31,0xa5,0x1d,0xbf,0x0c,0x1a,0x61,
+//0x18,0x4f,0x07,0xa0,0x00,0x00,0x00,0x04,
+//0x10,0x10,0x50,0x0a,0x4d,0x61,0x73,0x74,
+//0x65,0x72,0x43,0x61,0x72,0x64,0x90,0x00,
+//0x6f,0x2f,0x84,0x0e,0x32,0x50,0x41,0x59,
+//0x2e,0x53,0x59,0x53,0x2e,0x44,0x44,0x46,
+//0x30,0x31,0xa5,0x1d,0xbf,0x0c,0x1a,0x61,
+//0x18,0x4f,0x07,0xa0,0x00,0x00,0x00,0x04,
+//0x10,0x10,0x50,0x0a,0x4d,0x61,0x73,0x74,
+//0x65,0x72,0x43,0x61,0x72,0x64,0x90,0x00};
+/*
+0x6f,0x2f,0x84,0x0e,0x32,0x50,0x41,0x59,
+0x2e,0x53,0x59,0x53,0x2e,0x44,0x44,0x46,
+0x30,0x31,0xa5,0x1d,0xbf,0x0c,0x1a,0x61,
+0x18,0x4f,0x07,0xa0,0x00,0x00,0x00,0x04,
+0x10,0x10,0x50,0x0a,0x4d,0x61,0x73,0x74,
+0x65,0x72,0x43,0x61,0x72,0x64,0x90,0x00,
+0x6f,0x2f,0x84,0x0e,0x32,0x50,0x41,0x59};
+0x2e,0x53,0x59,0x53,0x2e,0x44,0x44,0x46,
+0x30,0x31,0xa5,0x1d,0xbf,0x0c,0x1a,0x61,
+0x18,0x4f,0x07,0xa0,0x00,0x00,0x00,0x04,
+0x10,0x10,0x50,0x0a,0x4d,0x61,0x73,0x74,
+0x65,0x72,0x43,0x61,0x72,0x64,0x90,0x00,
+0x65,0x72,0x43,0x61,0x72,0x64,0x90,0x00,
+0x65,0x72,0x43,0x61,0x72,0x64,0x90,0x00};
+*/
+/*
+//0x01,0x90,0x00,0x00,0x00,0x00,0x00,0x00};
+    uint8_t selectPPSE[60] = {
+0x6f,0x38,0x84,0x07,0xa0,0x00,0x00,0x00,
+0x04,0x10,0x10,0xa5,0x2d,0x50,0x0a,0x4d,
+0x61,0x73,0x74,0x65,0x72,0x43,0x61,0x72,
+0x64,0x87,0x01,0x01,0x5f,0x2d,0x02,0x65,
+0x6e,0x9f,0x11,0x01,0x01,0x9f,0x12,0x0a,
+0x4e,0x41,0x42,0x20,0x43,0x72,0x65,0x64,
+0x69,0x74,0xbf,0x0c,0x05,0x9f,0x4d,0x02,
+0x0b,0x0a,0x90,0x0};
+    uint8_t selectAID[] = {
+0x6f,0x38,0x84,0x07,0xa0,0x00,0x00,0x00,
+0x04,0x10,0x10,0xa5,0x2d,0x50,0x0a,0x4d,
+0x61,0x73,0x74,0x65,0x72,0x43,0x61,0x72,
+0x64,0x87,0x01,0x01,0x5f,0x2d,0x02,0x65,
+0x6e,0x9f,0x11,0x01,0x01,0x9f,0x12,0x0a,
+0x4e,0x41,0x42,0x20,0x43,0x72,0x65,0x64,
+0x69,0x74,0xbf,0x0c,0x05,0x9f,0x4d,0x02,
+0x0b,0x0a,0x90,0x0};
+    uint8_t getProcessing[] = {
+0x77,0x16,0x82,0x02,0x19,0x80,0x94,0x10,
+0x08,0x01,0x01,0x00,0x10,0x01,0x01,0x01,
+0x18,0x01,0x02,0x00,0x20,0x01,0x02,0x00,
+0x90,0x00};
+    uint8_t readRec11[] = {
+0x70,0x81,0x8d,0x9f,0x6c,0x02,0x00,0x01,
+0x9f,0x62,0x06,0x00,0x00,0x00,0x00,0x01,
+0xc0,0x9f,0x63,0x06,0x00,0x00,0x00,0xf8,
+0x00,0x00,0x56,0x4c,0x42,0x35,0x35,0x35,
+0x35,0x35,0x35,0x35,0x35,0x35,0x35,0x35,
+0x35,0x35,0x35,0x35,0x35,0x5e,0x20,0x2f,
+0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,
+0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,
+0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,
+0x5e,0x31,0x37,0x30,0x36,0x32,0x30,0x31,
+0x30,0x30,0x30,0x30,0x30,0x20,0x20,0x20,
+0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,
+0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,
+0x9f,0x64,0x01,0x03,0x9f,0x65,0x02,0x00,
+0xe0,0x9f,0x66,0x02,0x1f,0x00,0x9f,0x6b,
+0x13,0x53,0x13,0x58,0x55,0x12,0x49,0x66,
+0x14,0xd1,0x70,0x62,0x01,0x00,0x00,0x00,
+0x00,0x01,0x00,0x0f,0x9f,0x67,0x01,0x03,
+0x90,0x00}; 
+   uint8_t computeCC[] = {
+0x77,0x0f,0x9f,0x61,0x02,0x4a,0x49,0x9f,
+0x60,0x02,0xb8,0xf0,0x9f,0x36,0x02,0x07,
+0xe0,0x90,0x00};
+*/ 
+	#define CANNED_RESPONSE_COUNT 7 
+	tag_response_info_t responses[7] = {
+		{ .response = atqa,  .response_n = sizeof(atqa)  },  // Answer to request - respond with card type
+		{ .response = uid0,  .response_n = sizeof(uid0)  },  // Anticollision cascade1 - respond with uid
+		{ .response = sakresponse,  .response_n = sizeof(sakresponse)  },  // Acknowledge select - cascade 1
+		{ .response = ratscmd,  .response_n = sizeof(ratscmd)  },  // dummy ATS (pseudo-ATR), answer to RATS
+		{ .response = ACK1,  .response_n = sizeof(ACK1)  },  // dummy ATS (pseudo-ATR), answer to RATS
+		{ .response = ACK2,  .response_n = sizeof(ACK2)  },  // dummy ATS (pseudo-ATR), answer to RATS
+		{ .response = PPSR,  .response_n = sizeof(PPSR)  },  // dummy ATS (pseudo-ATR), answer to RATS
+	};
+    //calculated length of predone responses
+    uint16_t allocatedtag_len = 0; 
+    for(int i=0;i<CANNED_RESPONSE_COUNT;i++){
+        allocatedtag_len += responses[i].response_n;
+    }
+    //get the maximum length of the responses  
+    uint16_t allocatedtagmod_len  = (allocatedtag_len*8) +(allocatedtag_len) + (CANNED_RESPONSE_COUNT * 3);
+
+    clear_trace(); 
+    set_tracing(TRUE);
+    
+    //setup dynamic_reponse buffer
+    uint8_t dynamic_response_buffer[MAX_FRAME_SIZE];
+    uint8_t dynamic_modulation_buffer[MAX_FRAME_SIZE*8];
+    
+    tag_response_info_t dynamic_response_info = {
+        .response = dynamic_response_buffer,
+        .response_n = 0,
+        .modulation = dynamic_modulation_buffer,
+        .modulation_n = 0
+    };	
+    
+    BigBuf_free_keep_EM();
+    uint8_t *receivedCmd = BigBuf_malloc(MAX_FRAME_SIZE);
+    uint8_t *receivedCmdPar = BigBuf_malloc(MAX_PARITY_SIZE);
+    
+    free_buffer_pointer = BigBuf_malloc(allocatedtagmod_len);
+
+    //uint8_t* free_buffer_pointer = BigBuf_malloc(512);
+  
+    // Prepare the responses of the anticollision phase
+	// there will be not enough time to do this at the moment the reader sends it REQA
+    for (int i=0; i<CANNED_RESPONSE_COUNT; i++) {
+        responses[i].modulation = free_buffer_pointer;
+        prepare_tag_modulation(&responses[i], allocatedtagmod_len); 
+        free_buffer_pointer += ToSendMax;
+    }
+    //reset the ToSend Buffer
+    ToSendReset();    
+	// To control where we are in the protocol
+	//int order = 0;
+    int selectOrder = 0; 
+    //int lastorder;	
+    int len; 
+
+	// We need to listen to the high-frequency, peak-detected path.
+	iso14443a_setup(FPGA_HF_ISO14443A_TAGSIM_LISTEN);
+	tag_response_info_t* p_response;
+    
+	LED_C_ON();
+	// Clean receive command buffer
+    for(;;)
+    {  
+        if(!GetIso14443aCommandFromReader(receivedCmd, receivedCmdPar, &len)){
+            Dbprintf("Button press");
+	        LED_C_OFF();
+            break;
+        } 
+	    //Dbhexdump(len, receivedCmd, false); 
+        p_response = NULL;
+        //lastorder = order; 
+        if(receivedCmd[0] == 0x26) { // Received a REQUEST
+	    	p_response = &responses[0]; //order = 1;
+        }	
+	    else if(receivedCmd[0] == 0x52) { // Received a REQUEST
+            p_response = &responses[0]; //order = 6;
+        }
+        else if(receivedCmd[1] == 0x20 && receivedCmd[0] == 0x93) {	// Received request for UID (cascade 1)
+            p_response = &responses[1]; //order = 2; //send the UID 
+	    }  
+        else if(receivedCmd[1] == 0x70 && receivedCmd[0] == 0x93) {	// Received a SELECT (cascade 1)
+	    	p_response = &responses[2]; //order = 3; //send the SAK
+	    }
+        else if(receivedCmd[0] == 0xB2){
+			p_response = &responses[4]; //order = 30;
+        }  
+        else if(receivedCmd[0] == 0xB3) {	// Received a SELECT (cascade 2)
+		    p_response = &responses[5]; //order = 30;
+        }
+        else if(receivedCmd[0] == 0xD0) {	// Received a PPS request
+	    	p_response = &responses[6]; //order = 70;
+	    } 
+	    else if(receivedCmd[0] == 0xE0) {	// Received a RATS request
+	    	p_response = &responses[3]; //order = 70;
+	    }
+        else if(receivedCmd[0] == 0x50){
+            p_response = NULL;
+        } 
+        
+        else if((receivedCmd[0] == 0x02) || (receivedCmd[0] == 0x03))
+        { //I Frame
+            dynamic_response_info.response_n = 0; 
+            dynamic_response_info.response[0] = receivedCmd[0]; // copy PCB 
+            dynamic_response_info.response_n++; 
+            switch(receivedCmd[1]) {
+                case 0x00: 
+                    switch(receivedCmd[2]){
+                        case 0xA4: //select
+                            if(selectOrder == 0)
+                                memcpy(dynamic_response_info.response+1, selectPPSE, sizeof(selectPPSE));
+                                dynamic_response_info.response_n += sizeof(selectPPSE);
+                                selectOrder = 1;
+                            break;
+                        case 0xB2: //read record
+                            break;
+                        default:
+                            break;
+                    }
+                    break; 
+                case 0x80:
+                    switch(receivedCmd[2]){
+                        case 0x2A: //compute cryptographic checksum
+                            break;
+                        case 0xAE: //generate AC
+                            break;
+                        case 0xA8: //get processing options
+                            break; 
+                         default:
+                            break;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        } 
+        if(dynamic_response_info.response_n > 0)
+        {
+            AppendCrc14443a(dynamic_response_info.response,dynamic_response_info.response_n);
+            dynamic_response_info.response_n += 2;
+            //Dbhexdump(dynamic_response_info.response_n,dynamic_response_info.response, false); 
+            //reset the ToSend Buffer
+            ToSendReset(); 
+            //prepare the tag modulation 
+            if(prepare_tag_modulation(&dynamic_response_info,TOSEND_BUFFER_SIZE) == false) 
+            {
+                 Dbprintf("Error preparing tag response");
+                 break;
+            }
+            p_response = &dynamic_response_info;
+        } 
+        
+        if(p_response != NULL){ //send the modulated command
+            EmSendCmd14443aRaw(p_response->modulation, p_response->modulation_n, receivedCmd[0] == 0x52);
+            //EmSendCmd14443aRaw(p_response->modulation, p_response->modulation_n, false);
+             
+            //uint8_t par[MAX_PARITY_SIZE];
+            // 
+            //GetParity(p_response->response, p_response->response_n, par);
+            //
+            ////Dbhexdump(p_response->response_n, p_response->response, false); 
+            ////LogReceiveTrace(); 
+            //if(tracing){ 
+            //    LogSniffTrace(p_response->response_n, p_response->response,  par);
+            //}  
+            
+        }
+    } 
+    Dbprintf("finished"); 
+    //FpgaWriteConfWord(FPGA_MAJOR_MODE_OFF);
+    BigBuf_free_keep_EM();	
+    LED_C_OFF();
+}
+
+void EMVcorrect()
+{
+    //uint8_t* free_buffer_pointer;
+    uint8_t atqa[] = {0x04, 0x00};
+	uint8_t uid0[5] = {0x12,0x34,0x56,0x78,0x9A};
+	uid0[4] = uid0[0] ^ uid0[1] ^ uid0[2] ^ uid0[3];
+    //copy input rats into a buffer
+    uint8_t ratscmd[] = {0x0b, 0x78, 0x80, 0x81, 0x02, 0x4b, 0x4f, 0x4e, 0x41, 0x14, 0x11, 0x8a, 0x76}; 
+	
+	// Prepare the mandatory SAK (for 4 and 7 byte UID)
+	uint8_t sakresponse[3];
+	sakresponse[0] = 0x28;
+	ComputeCrc14443(CRC_14443_A, sakresponse, 1, &sakresponse[1], &sakresponse[2]);
+
+    uint8_t ACK1[] = {0xa3,0x6f,0xc6}; //ACK packets 
+    uint8_t ACK2[] = {0xa2,0x00,0x00};
+    AppendCrc14443a(ACK2, 1);
+    
+    //handle the PPS selection
+    uint8_t PPSR[3] = {0xD0,0x00,0x00};
+    AppendCrc14443a(PPSR, 1);
+/*  
+    //canned EMV responses
+    uint8_t selectPPSE[] = {
+0x6f,0x2f,0x84,0x0e,0x32,0x50,0x41,0x59,
+0x2e,0x53,0x59,0x53,0x2e,0x44,0x44,0x46,
+0x30,0x31,0xa5,0x1d,0xbf,0x0c,0x1a,0x61,
+0x18,0x4f,0x07,0xa0,0x00,0x00,0x00,0x04,
+0x10,0x10,0x50,0x0a,0x4d,0x61,0x73,0x74,
+0x65,0x72,0x43,0x61,0x72,0x64,0x87,0x01,
+0x01,0x90,0x00};
+*/
+    uint8_t selectPPSE[] = {
+0x6f,0x2f,0x84,0x0e,0x32,0x50,0x41,0x59,
+0x2e,0x53,0x59,0x53,0x2e,0x44,0x44,0x46,
+0x30,0x31,0xa5,0x1d,0xbf,0x0c,0x1a,0x61,
+0x18,0x4f,0x07,0xa0,0x00,0x00,0x00,0x04,
+0x18,0x4f,0x07,0xa0,0x00,0x00,0x00,0x04,
+0x10,0x10,0x50,0x0a,0x4d,0x61,0x73,0x74,
+0x65,0x72,0x43,0x61,0x72,0x64,0x90,0x00};
+
+	#define CANNED_RESPONSE_COUNT 7 
+	tag_response_info_t responses[7] = {
+		{ .response = atqa,  .response_n = sizeof(atqa)  },  // Answer to request - respond with card type
+		{ .response = uid0,  .response_n = sizeof(uid0)  },  // Anticollision cascade1 - respond with uid
+		{ .response = sakresponse,  .response_n = sizeof(sakresponse)  },  // Acknowledge select - cascade 1
+		{ .response = ratscmd,  .response_n = sizeof(ratscmd)  },  // dummy ATS (pseudo-ATR), answer to RATS
+		{ .response = ACK1,  .response_n = sizeof(ACK1)  },  // dummy ATS (pseudo-ATR), answer to RATS
+		{ .response = ACK2,  .response_n = sizeof(ACK2)  },  // dummy ATS (pseudo-ATR), answer to RATS
+		{ .response = PPSR,  .response_n = sizeof(PPSR)  },  // dummy ATS (pseudo-ATR), answer to RATS
+	};
+    //calculated length of predone responses
+    uint16_t allocatedtag_len = 0; 
+    for(int i=0;i<CANNED_RESPONSE_COUNT;i++){
+        allocatedtag_len += responses[i].response_n;
+    }
+    //get the maximum length of the responses  
+    uint16_t allocatedtagmod_len  = (allocatedtag_len*8) +(allocatedtag_len) + (CANNED_RESPONSE_COUNT * 3);
+
+    clear_trace(); 
+    set_tracing(TRUE);
+    
+    //setup dynamic_reponse buffer
+    uint8_t dynamic_response_buffer[MAX_FRAME_SIZE];
+    uint8_t dynamic_modulation_buffer[MAX_FRAME_SIZE*8];
+    
+    tag_response_info_t dynamic_response_info = {
+        .response = dynamic_response_buffer,
+        .response_n = 0,
+        .modulation = dynamic_modulation_buffer,
+        .modulation_n = 0
+    };	
+    
+    BigBuf_free_keep_EM();
+    uint8_t *receivedCmd = BigBuf_malloc(MAX_FRAME_SIZE);
+    uint8_t *receivedCmdPar = BigBuf_malloc(MAX_PARITY_SIZE);
+    
+    free_buffer_pointer = BigBuf_malloc(allocatedtagmod_len);
+
+    //uint8_t* free_buffer_pointer = BigBuf_malloc(512);
+  
+    // Prepare the responses of the anticollision phase
+	// there will be not enough time to do this at the moment the reader sends it REQA
+    for (int i=0; i<CANNED_RESPONSE_COUNT; i++) {
+        responses[i].modulation = free_buffer_pointer;
+        prepare_tag_modulation(&responses[i], allocatedtagmod_len); 
+        free_buffer_pointer += ToSendMax;
+    }
+    //reset the ToSend Buffer
+    ToSendReset();    
+	// To control where we are in the protocol
+	//int order = 0;
+    int selectOrder = 0; 
+    //int lastorder;	
+    int len; 
+
+	// We need to listen to the high-frequency, peak-detected path.
+	iso14443a_setup(FPGA_HF_ISO14443A_TAGSIM_LISTEN);
+	tag_response_info_t* p_response;
+    
+	LED_C_ON();
+	// Clean receive command buffer
+    for(;;)
+    {  
+        if(!GetIso14443aCommandFromReader(receivedCmd, receivedCmdPar, &len)){
+            Dbprintf("Button press");
+	        LED_C_OFF();
+            break;
+        } 
+	    //Dbhexdump(len, receivedCmd, false); 
+        p_response = NULL;
+        //lastorder = order; 
+        if(receivedCmd[0] == 0x26) { // Received a REQUEST
+	    	p_response = &responses[0]; //order = 1;
+        }	
+	    else if(receivedCmd[0] == 0x52) { // Received a REQUEST
+            p_response = &responses[0]; //order = 6;
+        }
+        else if(receivedCmd[1] == 0x20 && receivedCmd[0] == 0x93) {	// Received request for UID (cascade 1)
+            p_response = &responses[1]; //order = 2; //send the UID 
+	    }  
+        else if(receivedCmd[1] == 0x70 && receivedCmd[0] == 0x93) {	// Received a SELECT (cascade 1)
+	    	p_response = &responses[2]; //order = 3; //send the SAK
+	    }
+        else if(receivedCmd[0] == 0xB2){
+			p_response = &responses[4]; //order = 30;
+        }  
+        else if(receivedCmd[0] == 0xB3) {	// Received a SELECT (cascade 2)
+		    p_response = &responses[5]; //order = 30;
+        }
+        else if(receivedCmd[0] == 0xD0) {	// Received a PPS request
+	    	p_response = &responses[6]; //order = 70;
+	    } 
+	    else if(receivedCmd[0] == 0xE0) {	// Received a RATS request
+	    	p_response = &responses[3]; //order = 70;
+	    }
+        else if(receivedCmd[0] == 0x50){
+            p_response = NULL;
+        } 
+        
+        else if((receivedCmd[0] == 0x02) || (receivedCmd[0] == 0x03))
+        { //I Frame
+            dynamic_response_info.response_n = 0; 
+            dynamic_response_info.response[0] = receivedCmd[0]; // copy PCB 
+            dynamic_response_info.response_n++; 
+            switch(receivedCmd[1]) {
+                case 0x00: 
+                    switch(receivedCmd[2]){
+                        case 0xA4: //select
+                            if(selectOrder == 0)
+                                memcpy(dynamic_response_info.response+1, selectPPSE, sizeof(selectPPSE));
+                                dynamic_response_info.response_n += sizeof(selectPPSE);
+                                selectOrder = 1;
+                            break;
+                        case 0xB2: //read record
+                            break;
+                        default:
+                            break;
+                    }
+                    break; 
+                case 0x80:
+                    switch(receivedCmd[2]){
+                        case 0x2A: //compute cryptographic checksum
+                            break;
+                        case 0xAE: //generate AC
+                            break;
+                        case 0xA8: //get processing options
+                            break; 
+                         default:
+                            break;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        } 
+        if(dynamic_response_info.response_n > 0)
+        {
+            AppendCrc14443a(dynamic_response_info.response,dynamic_response_info.response_n);
+            dynamic_response_info.response_n += 2;
+            //Dbhexdump(dynamic_response_info.response_n,dynamic_response_info.response, false); 
+            //reset the ToSend Buffer
+            ToSendReset(); 
+            //prepare the tag modulation 
+            if(prepare_tag_modulation(&dynamic_response_info,TOSEND_BUFFER_SIZE) == false) 
+            {
+                 Dbprintf("Error preparing tag response");
+                 break;
+            }
+            p_response = &dynamic_response_info;
+        } 
+        
+        if(p_response != NULL){ //send the modulated command
+            EmSendCmd14443aRaw(p_response->modulation, p_response->modulation_n, receivedCmd[0] == 0x52);
+            //EmSendCmd14443aRaw(p_response->modulation, p_response->modulation_n, false);
+             
+            //uint8_t par[MAX_PARITY_SIZE];
+            // 
+            //GetParity(p_response->response, p_response->response_n, par);
+            //
+            ////Dbhexdump(p_response->response_n, p_response->response, false); 
+            ////LogReceiveTrace(); 
+            //if(tracing){ 
+            //    LogSniffTrace(p_response->response_n, p_response->response,  par);
+            //}  
+            
+        }
+    } 
+    Dbprintf("finished"); 
+    //FpgaWriteConfWord(FPGA_MAJOR_MODE_OFF);
+    BigBuf_free_keep_EM();	
+    LED_C_OFF();
+}

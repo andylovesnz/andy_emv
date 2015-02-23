@@ -171,6 +171,7 @@ typedef struct{
 #define CMD_MIFARE_SNIFFER                                                0x0630
 
 #define CMD_EMV_TRANSACTION                                               0x0640
+#define CMD_EMV_GET_RANDOM_NUM                                            0x0641
 
 //ultralightC
 #define CMD_MIFAREUC_AUTH1						                          0x0724
