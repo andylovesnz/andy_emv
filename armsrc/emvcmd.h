@@ -21,9 +21,6 @@
 #include "common.h"
 #include "emvutil.h"
 #include "emvcard.h"
-//create an external pointer to the emvcard
-//this is to allow other functions to process scanned cards
-//emvcard currentcard;
 
  
 #endif

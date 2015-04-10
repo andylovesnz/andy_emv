@@ -172,6 +172,7 @@ typedef struct{
 
 #define CMD_EMV_TRANSACTION                                               0x0640
 #define CMD_EMV_GET_RANDOM_NUM                                            0x0641
+#define CMD_EMV_LOAD_VALUE                                                0x0642
 
 //ultralightC
 #define CMD_MIFAREUC_AUTH1						                          0x0724

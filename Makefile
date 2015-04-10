@@ -1,7 +1,7 @@
 include common/Makefile.common
 
 GZIP=gzip
-FLASH_PORT=/dev/tty.usbmodemfa1341 
+FLASH_PORT=/dev/tty.usbmodemfa131 
 
 all clean: %: bootrom/% armsrc/% client/% recovery/%
 

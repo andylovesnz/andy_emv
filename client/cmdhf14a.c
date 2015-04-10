@@ -633,17 +633,58 @@ int CmdHF14ACmdRaw(const char *cmd) {
     } // if reply
     return 0;
 }
+//perform an EMV transaction
 int CmdHF14AEMVTransaction(const char *Cmd)
 {
     UsbCommand c = {CMD_EMV_TRANSACTION, {0, 0, 0}};
     SendCommand(&c);
     return 0;
 }
+//retrieve the UN number from a terminal
 int CmdHF14AEMVgetrng(const char *Cmd)
 {
     UsbCommand c = {CMD_EMV_GET_RANDOM_NUM, {0, 0, 0}};
     SendCommand(&c);
     return 0;
+}
+//set EMV tags in the device to use in a transaction
+int CmdHF14AEMVloadvalues(const char *Cmd)
+{
+    char filename[FILE_PATH_SIZE] = {0x00};
+    int len = 0;
+    UsbCommand c = {CMD_EMV_LOAD_VALUE, {0,0,0}};  
+    len = strlen(Cmd);
+    if (len > FILE_PATH_SIZE) len = FILE_PATH_SIZE;
+    memcpy(filename, Cmd, len);
+      
+    FILE *f = fopen(filename, "r");
+    char line[512];
+    
+    char *token;    
+    uint16_t tag;
+    char value[255];
+    size_t idx = 0;
+    size_t count = 0;
+ 
+    if (!f) {
+       PrintAndLog("couldn't open '%s'", filename);
+      return 0;
+    }
+    //parse file into structure and send
+    while (fgets(line, sizeof (line), f)) {
+        printf("LINE=%s\n", line);
+        token = strtok(line, ":"); 
+        tag = (uint16_t)strtol(token, NULL, 0);  
+        token = strtok(NULL,""); 
+        c.arg[0] = tag;
+        memcpy(c.d.asBytes, token, strlen(token));
+        SendCommand(&c);
+        //strncpy(value,token,sizeof(value));
+        printf("Loaded TAG=%04x\n", tag);
+        printf("Loaded VALUE=%s\n", token); 
+    }
+    fclose(f);
+    PrintAndLog("loaded %s", filename);
 }
 
 
@@ -685,6 +726,7 @@ static command_t CommandTable[] =
   {"raw",    CmdHF14ACmdRaw,       0, "Send raw hex data to tag"},
   {"emv",    CmdHF14AEMVTransaction,    0, "Perform EMV Reader Transaction"},
   {"getrng", CmdHF14AEMVgetrng, 0, "get random number from terminal"}, 
+  {"loadvalues", CmdHF14AEMVloadvalues, 0, "load EMV tags into device"},
   {NULL, NULL, 0, NULL}
 };
 

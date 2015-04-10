@@ -15,7 +15,7 @@
 #include <stdint.h>
 #include "iso14443a.h"
 #include "tlv.h"
-#include "emvcard.h"
+#include "emvtags.h"
 #include "emvdataels.h"
 // mifare 4bit card answers
 // reader voltage field detector
@@ -73,13 +73,16 @@ int emv_decodeCVM(uint8_t* CVM, uint8_t CVMlen);
 //void EMVsim();
 
 //utils
-int emv_printtag(uint8_t* selected_tag,emvcard* inputcard, uint8_t* outputstring, uint8_t* outputlen);
-int emv_decode_field(uint8_t* inputfield,uint16_t inputlength, emvcard *result);
-int emv_emvcard_decode_tag(tlvtag* inputtag, emvcard* currentcard);
+int emv_printtag(uint8_t* selected_tag,emvtags* inputcard, uint8_t* outputstring, uint8_t* outputlen);
+int emv_decode_field(uint8_t* inputfield,uint16_t inputlength, emvtags *result);
+int emv_emvtags_decode_tag(tlvtag* inputtag, emvtags* currentcard);
 //look up a tag in the current structure 
-int emv_lookuptag(uint8_t* tag, emvcard* currentcard, uint8_t* outputval, uint8_t* outputvallen);
-//generate a valid PDOL list from the returned card value, used in get processing options
-int emv_generateDOL(uint8_t* DOL, uint8_t DOLlen,emvcard* currentcard, uint8_t* DOLoutput, uint8_t* DOLoutputlen);
+int emv_lookuptag(uint8_t* tag, emvtags* currentcard, uint8_t* outputval, uint8_t* outputvallen);
+//set a tag from external impurt
+int emv_settag(uint32_t tag, uint8_t *datain, emvtags *currentcard) ;
 
-int emv_generatetemplate(uint8_t* templateval,emvcard* currentcard, uint8_t* returnedval, uint8_t* returnedlen, uint8_t numtags, ...);
+//generate a valid PDOL list from the returned card value, used in get processing options
+int emv_generateDOL(uint8_t* DOL, uint8_t DOLlen,emvtags* currentcard, uint8_t* DOLoutput, uint8_t* DOLoutputlen);
+
+int emv_generatetemplate(uint8_t* templateval,emvtags* currentcard, uint8_t* returnedval, uint8_t* returnedlen, uint8_t numtags, ...);
 #endif

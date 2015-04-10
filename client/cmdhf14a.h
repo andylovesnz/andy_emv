@@ -20,6 +20,8 @@ int CmdHF14AReader(const char *Cmd);
 int CmdHF14ASim(const char *Cmd);
 int CmdHF14ASnoop(const char *Cmd);
 
+int CmdHF14ALoadValues(const char *Cmd);
+
 int CmdHF14AEMVTransaction(const char *Cmd);
 
 char* getTagInfo(uint8_t uid);

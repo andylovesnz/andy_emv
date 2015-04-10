@@ -15,6 +15,24 @@
 #include "common.h"
 #include "mifaresniff.h"
 
+//ISO14443a states, used for Tag Emulation
+#define REQA        0x0 //Request command 
+#define SELUID1     0x10 //select UID level 1
+#define SELUID2     0x11 //select UID level 1
+#define SELUID3     0x12 //select UID level 1
+#define SEL1        0x20 //Select cascade level 1
+#define SEL2        0x21 //Select cascade level 2
+#define SEL3        0x22 //Select cascade level 3
+#define RATS        0x3 //Request for answer to select
+#define PPS         0x4 //Protocol and parameter selection  
+#define DESELECT    0x5  
+#define HLTA        0x6 //halt 
+#define WUPA        0x7 //wake-up
+#define AUTH        0x8 //Authentication Request (Mifare)
+#define RACK        0x9
+#define RNAK        0xA
+#define IBLOCK      0xB
+ 
 typedef struct {
 	enum {
 		DEMOD_UNSYNCD,

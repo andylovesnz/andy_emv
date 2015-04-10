@@ -20,14 +20,14 @@
 #include "iso14443a.h"
 #include "emvutil.h"
 #include "emvdataels.h" //EMV data elements 
-#include "emvcard.h" //EMV card structure
+#include "emvtags.h" //EMV card structure
 
 int EMV_DBGLEVEL = EMV_DBG_ALL;
 //uint8_t PCB = 0x00; //track Protocol Control Byte externally
 
 //util functions
 //print detected tag name over the serial link
-int emv_printtag(uint8_t* selected_tag, emvcard* inputcard, uint8_t* outputstring, uint8_t* outputlen)
+int emv_printtag(uint8_t* selected_tag, emvtags* inputcard, uint8_t* outputstring, uint8_t* outputlen)
 {
     //search tag list and print the match
     //get the value of the tag 
@@ -47,8 +47,8 @@ int emv_printtag(uint8_t* selected_tag, emvcard* inputcard, uint8_t* outputstrin
     return 0;
 }
 
-//returns the value of the emv tag in the supplied emvcard structure
-int emv_lookuptag(uint8_t* tag, emvcard *currentcard, uint8_t* outputval, uint8_t* outputvallen)
+//returns the value of the emv tag in the supplied emvtags structure
+int emv_lookuptag(uint8_t* tag, emvtags *currentcard, uint8_t* outputval, uint8_t* outputvallen)
 {
     //loop through tag and return the appropriate value
     uint8_t returnedtag[255]; 
@@ -377,14 +377,447 @@ exitfunction:  //goto label to exit search quickly once found
     return 0;
 }  
 
+//function to 
+int emv_settag(uint32_t tag, uint8_t *datain, emvtags *currentcard){
+    char binarydata[255] = {0};
+    if((strlen((const char *)datain)%2) != 0){ //must be an even string
+        return -1;
+    }
+    if(strlen((const char *)datain) > 255) {
+        return -1;
+    } 
+    uint8_t datalen = strlen((const char *)datain) / 2; //length of datain 
+    for(int i=0;i<strlen((const char *)datain);i+=2){
+        binarydata[i] |= (char)hex2int(datain[i]) << 4;
+        binarydata[i] |= (char)hex2int(datain[i+1]);
+    } 
+    switch(tag){
+        case 0x4F:
+            memcpy(currentcard->tag_4F, binarydata, datalen);
+            currentcard->tag_4F_len = datalen;
+            break; 
+        case 0x50:
+            memcpy(currentcard->tag_50, binarydata, datalen);
+            currentcard->tag_50_len = datalen;
+            break;
+        case 0x56:
+            memcpy(currentcard->tag_56, binarydata, datalen);
+            currentcard->tag_56_len = datalen;
+            break;
+        case 0x57:
+            memcpy(currentcard->tag_57, binarydata, datalen);
+            currentcard->tag_57_len = datalen;
+            break;
+        case 0x5a:
+            memcpy(currentcard->tag_5A, binarydata, datalen);
+            currentcard->tag_5A_len = datalen;
+            break;
+        case 0x61:
+            memcpy(currentcard->tag_61, binarydata, datalen);
+            currentcard->tag_61_len = datalen;
+            break;
+        case 0x6f:
+            memcpy(currentcard->tag_6F, binarydata, datalen);
+            currentcard->tag_6F_len = datalen;
+            break;
+        case 0x70:
+            memcpy(currentcard->tag_70, binarydata, datalen);
+            currentcard->tag_70_len = datalen;
+            break;
+        case 0x77:
+            memcpy(currentcard->tag_77, binarydata, datalen);
+            currentcard->tag_77_len = datalen;
+            break;
+        case 0x80:
+            memcpy(currentcard->tag_80, binarydata, datalen);
+            currentcard->tag_80_len = datalen;
+            break;
+        case 0x82:
+            memcpy(currentcard->tag_82, binarydata, sizeof(currentcard->tag_82));
+            break; 
+        case 0x84:
+            memcpy(currentcard->tag_84, binarydata, datalen);
+            currentcard->tag_84_len = datalen;
+            break;
+        case 0x86:
+            memcpy(currentcard->tag_86, binarydata, datalen);
+            currentcard->tag_86_len = datalen;
+            break;
+        case 0x87:
+            memcpy(currentcard->tag_87, binarydata, sizeof(currentcard->tag_87));
+            break;
+        case 0x88:
+            memcpy(currentcard->tag_88, binarydata, sizeof(currentcard->tag_88));
+            break;
+        case 0x8a:
+            memcpy(currentcard->tag_8A, binarydata, sizeof(currentcard->tag_8A));
+            break;
+        case 0x8c:
+            memcpy(currentcard->tag_8C, binarydata, datalen);
+            currentcard->tag_8C_len = datalen;
+            break;
+        case 0x8d:
+            memcpy(currentcard->tag_8D, binarydata, datalen);
+            currentcard->tag_8D_len = datalen;
+            break;
+        case 0x8e:
+            memcpy(currentcard->tag_8E, binarydata, datalen);
+            currentcard->tag_8E_len = datalen;
+            break;
+        case 0x8f:
+            memcpy(currentcard->tag_8F, binarydata, sizeof(currentcard->tag_8F));
+            break;
+        case 0x90:
+            memcpy(currentcard->tag_90, binarydata, datalen);
+            currentcard->tag_90_len = datalen;
+            break;
+        case 0x91:
+            memcpy(currentcard->tag_91, binarydata, datalen);
+            currentcard->tag_91_len = datalen;
+            break;
+        case 0x92:
+            memcpy(currentcard->tag_92, binarydata, datalen);
+            currentcard->tag_92_len = datalen;
+            break;
+        case 0x93:
+            memcpy(currentcard->tag_93, binarydata, datalen);
+            currentcard->tag_93_len = datalen;           
+            break;
+        case 0x94:
+            memcpy(currentcard->tag_94, binarydata, datalen);
+            currentcard->tag_94_len = datalen;           
+            break;
+        case 0x95:
+            memcpy(currentcard->tag_95, binarydata, sizeof(currentcard->tag_95));
+            break;
+        case 0x97:
+            memcpy(currentcard->tag_97, binarydata, datalen);
+            currentcard->tag_97_len = datalen;           
+            break;
+        case 0x98:
+            memcpy(currentcard->tag_98, binarydata, sizeof(currentcard->tag_98));
+            break;
+        case 0x99:
+            memcpy(currentcard->tag_99, binarydata, datalen);
+            currentcard->tag_99_len = datalen;           
+            break;
+        case 0x9a:
+            memcpy(currentcard->tag_9A, binarydata, sizeof(currentcard->tag_9A));
+            break;
+        case 0x9b:
+            memcpy(currentcard->tag_9B, binarydata, sizeof(currentcard->tag_9B));
+            break;
+        case 0x9c:
+            memcpy(currentcard->tag_9C, binarydata, sizeof(currentcard->tag_9C));
+            break;
+        case 0x9d:
+            memcpy(currentcard->tag_9D, binarydata, datalen);
+            currentcard->tag_9D_len = datalen;           
+            break;
+        case 0xa5:
+            memcpy(currentcard->tag_A5, binarydata, datalen);
+            currentcard->tag_A5_len = datalen;           
+            break; 
+        case 0xaf:
+            memcpy(currentcard->tag_AF, binarydata, datalen);
+            currentcard->tag_AF_len = datalen;           
+            break; 
+        case 0xcd:
+            memcpy(currentcard->tag_CD, binarydata, sizeof(currentcard->tag_CD));
+            break;
+        case 0xce:
+            memcpy(currentcard->tag_CE, binarydata, sizeof(currentcard->tag_CE));
+            break;
+        case 0xcf:
+            memcpy(currentcard->tag_CF, binarydata, sizeof(currentcard->tag_CF));
+            break;
+        case 0xd7:
+            memcpy(currentcard->tag_CF, binarydata, sizeof(currentcard->tag_CF));
+            break;
+        case 0xd8:
+            memcpy(currentcard->tag_CF, binarydata, sizeof(currentcard->tag_CF));
+            break;
+        case 0xd9:
+            break;
+        case 0xda:
+            memcpy(currentcard->tag_DA, binarydata, sizeof(currentcard->tag_DA));
+            break;
+        case 0xdb:
+            memcpy(currentcard->tag_DB, binarydata, sizeof(currentcard->tag_DB));
+            break;
+        case 0xdc:
+            memcpy(currentcard->tag_DB, binarydata, sizeof(currentcard->tag_DB));
+            break;
+        case 0xdd:
+            memcpy(currentcard->tag_DD, binarydata, sizeof(currentcard->tag_DD));
+            break;
+        case 0x5f20:
+            break;
+        case 0x5f24:
+            memcpy(currentcard->tag_5F24, binarydata, sizeof(currentcard->tag_5F24));
+            break;
+        case 0x5f25:
+            memcpy(currentcard->tag_5F25, binarydata, sizeof(currentcard->tag_5F25));
+            break;
+        case 0x5f28:
+            memcpy(currentcard->tag_5F28, binarydata, sizeof(currentcard->tag_5F28));
+            break;
+        case 0x5f2a:
+            memcpy(currentcard->tag_5F2A, binarydata, sizeof(currentcard->tag_5F2A));
+            break;
+        case 0x5f2d:
+            break;
+        case 0x5f30:
+            memcpy(currentcard->tag_5F30, binarydata, sizeof(currentcard->tag_5F30));
+            break;
+        case 0x5f34:
+            memcpy(currentcard->tag_5F34, binarydata, sizeof(currentcard->tag_5F34));
+            break;
+        case 0x5f36:
+            memcpy(currentcard->tag_5F36, binarydata, sizeof(currentcard->tag_5F36));
+            break;
+        case 0x5f50:
+            break;
+        case 0x5f54:
+            memcpy(currentcard->tag_5F54, binarydata, sizeof(currentcard->tag_5F54));
+            break;
+        case 0x9f01:
+            memcpy(currentcard->tag_9F01, binarydata, sizeof(currentcard->tag_9F01));
+            break;
+        case 0x9f02:
+            memcpy(currentcard->tag_9F02, binarydata, sizeof(currentcard->tag_9F02));
+            break;
+        case 0x9f03:
+            memcpy(currentcard->tag_9F03, binarydata, sizeof(currentcard->tag_9F03));
+            break;
+        case 0x9f04:
+            memcpy(currentcard->tag_9F04, binarydata, sizeof(currentcard->tag_9F04));
+            break;
+        case 0x9f05:
+            memcpy(currentcard->tag_9F05, binarydata, datalen);
+            currentcard->tag_9F05_len = datalen;
+            break;
+        case 0x9f06:
+            memcpy(currentcard->tag_9F06, binarydata, datalen);
+            currentcard->tag_9F06_len = datalen;
+            break;
+        case 0x9f07:
+            memcpy(currentcard->tag_9F07, binarydata, sizeof(currentcard->tag_9F07));
+            break;
+        case 0x9f08:
+            memcpy(currentcard->tag_9F08, binarydata, sizeof(currentcard->tag_9F08));
+            break;
+        case 0x9f09:
+            memcpy(currentcard->tag_9F09, binarydata, sizeof(currentcard->tag_9F09));
+            break;
+        case 0x9f0b:
+            memcpy(currentcard->tag_9F0B, binarydata, sizeof(currentcard->tag_9F0B));
+            break;
+        case 0x9f0d:
+            memcpy(currentcard->tag_9F0D, binarydata, sizeof(currentcard->tag_9F0D));
+            break;
+        case 0x9f0e:
+            memcpy(currentcard->tag_9F0E, binarydata, sizeof(currentcard->tag_9F0E));
+            break;
+        case 0x9f0f:
+            memcpy(currentcard->tag_9F0F, binarydata, sizeof(currentcard->tag_9F0F));
+            break;
+        case 0x9f10:
+            memcpy(currentcard->tag_9F10, binarydata, datalen);
+            currentcard->tag_9F10_len = datalen;break;
+        case 0x9f11:
+            memcpy(currentcard->tag_9F11, binarydata, sizeof(currentcard->tag_9F11));
+            break;
+        case 0x9f12:
+            memcpy(currentcard->tag_9F12, binarydata, datalen);
+            currentcard->tag_9F12_len = datalen;break;
+        case 0x9f13:
+            memcpy(currentcard->tag_9F13, binarydata, sizeof(currentcard->tag_9F13));
+            break;
+        case 0x9f14:
+            memcpy(currentcard->tag_9F14, binarydata, sizeof(currentcard->tag_9F14));
+            break;
+        case 0x9f15:
+            memcpy(currentcard->tag_9F15, binarydata, sizeof(currentcard->tag_9F15));
+            break;
+        case 0x9f16:
+            memcpy(currentcard->tag_9F16, binarydata, sizeof(currentcard->tag_9F16));
+            break;
+        case 0x9f17:
+            memcpy(currentcard->tag_9F17, binarydata, sizeof(currentcard->tag_9F17));
+            break;
+        case 0x9f18:
+            memcpy(currentcard->tag_9F18, binarydata, sizeof(currentcard->tag_9F18));
+            break;
+        case 0x9f1a:
+            memcpy(currentcard->tag_9F1A, binarydata, sizeof(currentcard->tag_9F1A));
+            break;
+        case 0x9f1b:
+            memcpy(currentcard->tag_9F1B, binarydata, sizeof(currentcard->tag_9F1B));
+            break;
+        case 0x9f1c:
+            memcpy(currentcard->tag_9F1C, binarydata, sizeof(currentcard->tag_9F1C));
+            break;
+        case 0x9f1d:
+            memcpy(currentcard->tag_9F1D, binarydata, datalen);
+            currentcard->tag_9F1D_len = datalen;break;
+        case 0x9f1e:
+            memcpy(currentcard->tag_9F1E, binarydata, sizeof(currentcard->tag_9F1E));
+            break;
+        case 0x9f1f:
+            memcpy(currentcard->tag_9F1F, binarydata, datalen);
+            currentcard->tag_9F1F_len = datalen;break;
+        case 0x9f20:
+            memcpy(currentcard->tag_9F20, binarydata, datalen);
+            currentcard->tag_9F20_len = datalen;break;
+        case 0x9f21:
+            memcpy(currentcard->tag_9F21, binarydata, sizeof(currentcard->tag_9F21));
+            break;
+        case 0x9f22:
+            memcpy(currentcard->tag_9F22, binarydata, sizeof(currentcard->tag_9F22));
+            break;
+        case 0x9f23:
+            memcpy(currentcard->tag_9F23, binarydata, sizeof(currentcard->tag_9F23));
+            break;
+        case 0x9f26:
+            memcpy(currentcard->tag_9F26, binarydata, sizeof(currentcard->tag_9F26));
+            break;
+        case 0x9f27:
+            memcpy(currentcard->tag_9F27, binarydata, sizeof(currentcard->tag_9F27));
+            break;
+        case 0x9f2d:
+            memcpy(currentcard->tag_9F2D, binarydata, datalen);
+            currentcard->tag_9F2D_len = datalen;break;
+        case 0x9f2e:
+            memcpy(currentcard->tag_9F2E, binarydata, sizeof(currentcard->tag_9F2E));
+            break;
+        case 0x9f2f:
+            memcpy(currentcard->tag_9F2F, binarydata, datalen);
+            currentcard->tag_9F2F_len = datalen;break;
+        case 0x9f32:
+            memcpy(currentcard->tag_9F32, binarydata, datalen);
+            currentcard->tag_9F32_len = datalen;break;
+        case 0x9f33:
+            memcpy(currentcard->tag_9F33, binarydata, sizeof(currentcard->tag_9F33));
+            break;
+        case 0x9f34:
+            memcpy(currentcard->tag_9F34, binarydata, sizeof(currentcard->tag_9F34));
+            break;
+        case 0x9f35:
+            memcpy(currentcard->tag_9F35, binarydata, sizeof(currentcard->tag_9F35));
+            break;
+        case 0x9f36:
+            memcpy(currentcard->tag_9F36, binarydata, sizeof(currentcard->tag_9F36));
+            break;
+        case 0x9f37:
+            memcpy(currentcard->tag_9F37, binarydata, sizeof(currentcard->tag_9F37));
+            break;
+        case 0x9f38:
+            break;
+        case 0x9f39:
+            memcpy(currentcard->tag_9F39, binarydata, sizeof(currentcard->tag_9F39));
+            break;
+        case 0x9f40:
+            memcpy(currentcard->tag_9F40, binarydata, sizeof(currentcard->tag_9F40));
+            break;
+        case 0x9f41:
+            memcpy(currentcard->tag_9F41, binarydata, sizeof(currentcard->tag_9F41));
+            break;
+        case 0x9f42:
+            memcpy(currentcard->tag_9F42, binarydata, sizeof(currentcard->tag_9F42));
+            break;
+        case 0x9f43:
+            memcpy(currentcard->tag_9F43, binarydata, sizeof(currentcard->tag_9F43));
+            break;
+        case 0x9f44:
+            memcpy(currentcard->tag_9F44, binarydata, sizeof(currentcard->tag_9F44));
+            break;
+        case 0x9f45:
+            memcpy(currentcard->tag_9F45, binarydata, sizeof(currentcard->tag_9F45));
+            break;
+        case 0x9f46:
+            memcpy(currentcard->tag_9F46, binarydata, datalen);
+            currentcard->tag_9F46_len = datalen;break;
+        case 0x9f47:
+            memcpy(currentcard->tag_9F47, binarydata, datalen);
+            currentcard->tag_9F47_len = datalen;break;
+        case 0x9f48:
+            memcpy(currentcard->tag_9F48, binarydata, datalen);
+            currentcard->tag_9F48_len = datalen;break;
+        case 0x9f49:
+            memcpy(currentcard->tag_9F49, binarydata, datalen);
+            currentcard->tag_9F49_len = datalen;break;
+        case 0x9f4a:
+            memcpy(currentcard->tag_9F4A, binarydata, sizeof(currentcard->tag_9F4A));
+            break;
+        case 0x9f4b:
+            memcpy(currentcard->tag_9F4B, binarydata, datalen);
+            currentcard->tag_9F4B_len = datalen;break;
+        case 0x9f4c:
+            memcpy(currentcard->tag_9F4C, binarydata, sizeof(currentcard->tag_9F4C));
+            break;
+        case 0x9f4d:
+            memcpy(currentcard->tag_9F4D, binarydata, sizeof(currentcard->tag_9F4D));
+            break;
+        case 0x9f4e:
+            memcpy(currentcard->tag_9F4E, binarydata, sizeof(currentcard->tag_9F4E));
+            break;
+        case 0x9f60:
+            memcpy(currentcard->tag_9F60, binarydata, sizeof(currentcard->tag_9F60));
+            break;
+        case 0x9f61:
+            memcpy(currentcard->tag_9F61, binarydata, sizeof(currentcard->tag_9F61));
+            break;
+        case 0x9f62:
+            memcpy(currentcard->tag_9F62, binarydata, sizeof(currentcard->tag_9F62));
+            break;
+        case 0x9f63:
+            memcpy(currentcard->tag_9F63, binarydata, sizeof(currentcard->tag_9F63));
+            break;
+        case 0x9f64:
+            memcpy(currentcard->tag_9F64, binarydata, sizeof(currentcard->tag_9F64));
+            break;
+        case 0x9f65:
+            memcpy(currentcard->tag_9F65, binarydata, sizeof(currentcard->tag_9F65));
+            break;
+        case 0x9f66:
+            memcpy(currentcard->tag_9F66, binarydata, sizeof(currentcard->tag_9F66));
+            break;
+        case 0x9f67:
+            memcpy(currentcard->tag_9F67, binarydata, sizeof(currentcard->tag_9F67));
+            break;
+        case 0x9f68:
+            memcpy(currentcard->tag_9F68, binarydata, datalen);
+            currentcard->tag_9F68_len = datalen;break;
+        case 0x9f69:
+            memcpy(currentcard->tag_9F69, binarydata, datalen);
+            currentcard->tag_9F69_len = datalen;break;
+        case 0x9f6a:
+            memcpy(currentcard->tag_9F6A, binarydata, sizeof(currentcard->tag_9F6A));
+            break;
+        case 0x9f6b:
+            memcpy(currentcard->tag_9F6B, binarydata, sizeof(currentcard->tag_9F6B));
+            break;
+        case 0x9f6c:
+            memcpy(currentcard->tag_9F6C, binarydata, sizeof(currentcard->tag_9F6C));
+            break;
+        case 0xbf0c:
+            memcpy(currentcard->tag_BF0C, binarydata, datalen);
+            currentcard->tag_BF0C_len = datalen;break;
+        default:
+            break;
+        }
+    return 0; 
+}
+
 /* generates an emv template based off tag values supplied */ 
-int emv_generatetemplate(uint8_t* templateval,emvcard* currentcard, uint8_t* returnedval, uint8_t* returnedlen,uint8_t numtags, ...)
+int emv_generatetemplate(uint8_t* templateval,emvtags* currentcard, uint8_t* returnedval, uint8_t* returnedlen,uint8_t numtags, ...)
 {
     va_list arguments;
     uint8_t* currenttag; //value of the current tag
-    uint8_t tagval[256]; //buffer to hold the extracted tag value 
+    uint8_t tagval[255]; //buffer to hold the extracted tag value 
     uint8_t taglen = 0; //extracted tag length 
-    uint8_t bufferval[256]; 
+    uint8_t bufferval[255]; 
     uint8_t counter = 0; 
     uint32_t encodedlen = 0; 
     va_start(arguments, numtags);
@@ -400,7 +833,7 @@ int emv_generatetemplate(uint8_t* templateval,emvcard* currentcard, uint8_t* ret
 }
 
 //generate a valid pdol list
-int emv_generateDOL(uint8_t* DOL, uint8_t DOLlen,emvcard* currentcard,uint8_t* DOLoutput, uint8_t* DOLoutputlen)
+int emv_generateDOL(uint8_t* DOL, uint8_t DOLlen,emvtags* currentcard,uint8_t* DOLoutput, uint8_t* DOLoutputlen)
 {
     if(!DOL || !currentcard || !DOLoutput) // null pointer checks
         return 1; 
@@ -432,7 +865,7 @@ int emv_generateDOL(uint8_t* DOL, uint8_t DOLlen,emvcard* currentcard,uint8_t* D
 
 
 //decode the tag inputted and fill in the supplied structure. clean up the cleanup_passpass function
-int emv_emvcard_decode_tag(tlvtag* inputtag, emvcard* currentcard)
+int emv_emvtags_decode_tag(tlvtag* inputtag, emvtags* currentcard)
 {
     if(!inputtag || !currentcard) {
         return 1;
@@ -888,7 +1321,7 @@ else
    return 0;
 }
 
-int emv_decode_field(uint8_t* inputfield,uint16_t inputlength, emvcard *result)
+int emv_decode_field(uint8_t* inputfield,uint16_t inputlength, emvtags *result)
 {
     uint16_t lengthcounter=0; 
     tlvtag newtag; 
@@ -901,8 +1334,8 @@ int emv_decode_field(uint8_t* inputfield,uint16_t inputlength, emvcard *result)
     {
         //decode the tlv tag 
         decode_ber_tlv_item((inputfield+lengthcounter),&newtag);
-        //write the the emvcard strucutre 
-        emv_emvcard_decode_tag(&newtag,result); 
+        //write the the emvtags strucutre 
+        emv_emvtags_decode_tag(&newtag,result); 
         //move to next value and decode 
         lengthcounter += newtag.fieldlength-1; 
     }
@@ -1017,11 +1450,13 @@ int emv_getprocessingoptions(uint8_t* pdol, uint8_t pdol_len, void* data)
     processingCmd[1] = 0xA8;
     processingCmd[2] = 0x00;
     processingCmd[3] = 0x00; 
-    processingCmd[4] = 0x83; //template
-    processingCmd[5] = pdol_len;
-    if(pdol_len > 0) 
-        memcpy(&(processingCmd[6]), pdol, pdol_len);
+    processingCmd[4] = pdol_len + 2; 
+    processingCmd[5] = 0x83; //template
+    processingCmd[6] = pdol_len;
+    if(pdol_len > 0){ 
+        memcpy(&(processingCmd[6]), pdol, pdol_len);}
     processingCmd[processingCmd_len-1] = 0x00; 
+    Dbhexdump(processingCmd_len, processingCmd, false); 
     return iso14_apdu(processingCmd,processingCmd_len,false, 0, data);
 }
 
@@ -1178,7 +1613,7 @@ int emv_decodeCVM(uint8_t* CVM, uint8_t CVMlen)
     return 0;
 }
 
-//simulate a emvcard card
+//simulate a emvtags card
 //input is a structure containing values to simulate
 //clones an EMV card 
 
@@ -1190,9 +1625,9 @@ void emvsnoop()
     int res;
     //uint32_t selTimer = 0;
  
-    //setup emvcard card vals 
+    //setup emvtags card vals 
     /* 
-    struct emvcard cardvals;
+    struct emvtags cardvals;
     cardvals.TL = 0x0B;
     cardvals.T0 = 0x78;
     cardvals.TA1 = 0x80;
