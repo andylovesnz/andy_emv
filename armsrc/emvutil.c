@@ -380,17 +380,20 @@ exitfunction:  //goto label to exit search quickly once found
 //function to 
 int emv_settag(uint32_t tag, uint8_t *datain, emvtags *currentcard){
     char binarydata[255] = {0};
-    if((strlen((const char *)datain)%2) != 0){ //must be an even string
-        return -1;
-    }
-    if(strlen((const char *)datain) > 255) {
-        return -1;
-    } 
+    //if((strlen((const char *)datain)%2) != 0){ //must be an even string
+    //    return -1;
+    //}
+    //if(strlen((const char *)datain) > 255) {
+    //    return -1;
+    //} 
     uint8_t datalen = strlen((const char *)datain) / 2; //length of datain 
     for(int i=0;i<strlen((const char *)datain);i+=2){
         binarydata[i] |= (char)hex2int(datain[i]) << 4;
         binarydata[i] |= (char)hex2int(datain[i+1]);
     } 
+    Dbprintf("BINARYDATA="); 
+    Dbhexdump(datalen,(uint8_t *)binarydata,false);
+ 
     switch(tag){
         case 0x4F:
             memcpy(currentcard->tag_4F, binarydata, datalen);
@@ -846,17 +849,21 @@ int emv_generateDOL(uint8_t* DOL, uint8_t DOLlen,emvtags* currentcard,uint8_t* D
     uint8_t retrievedtagvallen; 
     
     memset(DOLoutputbuffer,0x00, 255); //clear the output buffer
-    while(i< DOLlen)
+    while(i < DOLlen)
     {
         //length of DOL tag 
-        if((*(DOL+i) & 0x1F) == 0x1F){ scannedtaglen = 2;}
-        else{scannedtaglen=1;}
+        if((*(DOL+i) & 0x1F) == 0x1F)
+            { scannedtaglen = 2;}
+        else
+            {scannedtaglen=1;}
         memcpy(scannedtag, DOL+i,scannedtaglen);
         //look up tag value and copy
+        Dbhexdump(2,scannedtag,false); 
         emv_lookuptag(scannedtag,currentcard,&(DOLoutputbuffer[DOLcounter]),&retrievedtagvallen);
         DOLcounter += (uint8_t)DOL[i+scannedtaglen];
         i += scannedtaglen + 1; 
         memset(scannedtag, 0x00, 2); //clear current tag 
+         
     }
     memcpy(DOLoutput, DOLoutputbuffer, DOLcounter);
     *DOLoutputlen = DOLcounter; 
@@ -1454,8 +1461,8 @@ int emv_getprocessingoptions(uint8_t* pdol, uint8_t pdol_len, void* data)
     processingCmd[5] = 0x83; //template
     processingCmd[6] = pdol_len;
     if(pdol_len > 0){ 
-        memcpy(&(processingCmd[6]), pdol, pdol_len);}
-    processingCmd[processingCmd_len-1] = 0x00; 
+        memcpy(&(processingCmd[7]), pdol, pdol_len);}
+    processingCmd[processingCmd_len] = 0x00; 
     Dbhexdump(processingCmd_len, processingCmd, false); 
     return iso14_apdu(processingCmd,processingCmd_len,false, 0, data);
 }

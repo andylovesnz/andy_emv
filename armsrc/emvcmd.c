@@ -22,8 +22,8 @@ static emvtags currentcard;
 //static tUart Uart;
 //static tDemod Demod;
 void EMVloadvalue(uint32_t tag, uint8_t *datain){
-    Dbprintf("TAG=%i\n", tag);
-    Dbprintf("DATA=%s\n", datain);
+    //Dbprintf("TAG=%i\n", tag);
+    //Dbprintf("DATA=%s\n", datain);
     emv_settag(tag, datain, &currentcard);
 }
 
@@ -195,7 +195,7 @@ int EMVGenerateAC(uint8_t refcontrol, emvtags* inputcard)
 }
 //function to perform paywave transaction
 //takes in TTQ, amount authorised, unpredicable number and transaction currency code
-int EMV_PaywaveTransaction(char TTQ[4], int amountAuth, char UN[8], int currCode)
+int EMV_PaywaveTransaction()
 {
     EMVSelectAID(currentcard.tag_4F,currentcard.tag_4F_len, &currentcard); //perform second AID command
      
@@ -209,20 +209,21 @@ int EMV_PaywaveTransaction(char TTQ[4], int amountAuth, char UN[8], int currCode
 //    EMVSelectAID(currentcard.tag_4F,currentcard.tag_4F_len, &currentcard);  
 //    //Dbhexdump(100,responsebuffer,false); 
 //    
-//    //get PDOL
-//    uint8_t pdolcommand[20]; //20 byte buffer for pdol data 
-//    uint8_t pdolcommandlen = 0; 
-//    if(currentcard.tag_9F38_len > 0) { 
-//        emv_generateDOL(currentcard.tag_9F38, currentcard.tag_9F38_len, &currentcard, pdolcommand, &pdolcommandlen); 
-//    }
+    //get PDOL
+    uint8_t pdolcommand[20]; //20 byte buffer for pdol data 
+    uint8_t pdolcommandlen = 0; 
+    if(currentcard.tag_9F38_len > 0) { 
+        emv_generateDOL(currentcard.tag_9F38, currentcard.tag_9F38_len, &currentcard, pdolcommand, &pdolcommandlen); 
+    }
+    Dbhexdump(pdolcommandlen, pdolcommand,false);
 //    else{
 //        //pdolcommand = NULL; //pdol val is null
 //        pdolcommandlen = 0;
 //    }
-//    if(!emv_getprocessingoptions(pdolcommand,pdolcommandlen)) {
-//        if(EMV_DBGLEVEL >= 1) Dbprintf("PDOL failed");
-//        return 1; 
-//    }
+    if(!EMVGetProcessingOptions(pdolcommand,pdolcommandlen, &currentcard)) {
+        if(EMV_DBGLEVEL >= 1) Dbprintf("PDOL failed");
+        return 1; 
+    }
 //    if(responsebuffer[1] == 0x80) //format 1 data field returned
 //    { 
 //        memcpy(currentcard.tag_82, &responsebuffer[3],2); //copy AIP
@@ -528,7 +529,7 @@ void EMVTransaction()
         }
         else if(!memcmp(currentcard.tag_4F, AID_VISA, sizeof(AID_VISA))){            
             Dbprintf("VISA Paywave Card Detected"); 
-            //EMV_PaywaveTransaction();
+            EMV_PaywaveTransaction();
         }
         
         //output the sensitive data
