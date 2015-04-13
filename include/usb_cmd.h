@@ -89,9 +89,12 @@ typedef struct{
 #define CMD_EM4X_WRITE_WORD                                               0x0219
 #define CMD_IO_DEMOD_FSK                                                  0x021A
 #define CMD_IO_CLONE_TAG                                                  0x021B
-#define CMD_EM410X_DEMOD  												  0x021c
+#define CMD_EM410X_DEMOD                                                  0x021c
 // Sampling configuration for LF reader/snooper
 #define CMD_SET_LF_SAMPLING_CONFIG                                        0x021d
+#define CMD_FSK_SIM_TAG                                                   0x021E
+#define CMD_ASK_SIM_TAG                                                   0x021F
+#define CMD_PSK_SIM_TAG                                                   0x0220
 
 /* CMD_SET_ADC_MUX: ext1 is 0 for lopkd, 1 for loraw, 2 for hipkd, 3 for hiraw */
 
@@ -131,6 +134,7 @@ typedef struct{
 #define CMD_READER_ICLASS                                                 0x0394
 #define CMD_READER_ICLASS_REPLAY					  					  0x0395
 #define CMD_ICLASS_ISO14443A_WRITE										  0x0397
+#define CMD_ICLASS_EML_MEMSET                                             0x0398
 
 // For measurements of the antenna tuning
 #define CMD_MEASURE_ANTENNA_TUNING                                        0x0400
@@ -173,6 +177,7 @@ typedef struct{
 #define CMD_EMV_TRANSACTION                                               0x0640
 #define CMD_EMV_GET_RANDOM_NUM                                            0x0641
 #define CMD_EMV_LOAD_VALUE                                                0x0642
+#define CMD_EMV_DUMP_CARD                                                 0x0643
 
 //ultralightC
 #define CMD_MIFAREUC_AUTH1						                          0x0724
@@ -200,7 +205,11 @@ typedef struct{
 
 //Iclass reader flags
 #define FLAG_ICLASS_READER_ONLY_ONCE    0x01
-#define FLAG_ICLASS_READER_GET_CC       0x02
+#define FLAG_ICLASS_READER_CC       0x02
+#define FLAG_ICLASS_READER_CSN		0x04
+#define FLAG_ICLASS_READER_CONF		0x08
+#define FLAG_ICLASS_READER_AA		0x10
+
 
 
 // CMD_DEVICE_INFO response packet has flags in arg[0], flag definitions:

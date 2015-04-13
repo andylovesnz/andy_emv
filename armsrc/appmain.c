@@ -648,7 +648,7 @@ void UsbPacketReceived(uint8_t *packet, int len)
 			setSamplingConfig((sample_config *) c->d.asBytes);
 			break;
 		case CMD_ACQUIRE_RAW_ADC_SAMPLES_125K:
-			cmd_send(CMD_ACK,SampleLF(),0,0,0,0);
+			cmd_send(CMD_ACK,SampleLF(c->arg[0]),0,0,0,0);
 			break;
 		case CMD_MOD_THEN_ACQUIRE_RAW_ADC_SAMPLES_125K:
 			ModThenAcquireRawAdcSamples125k(c->arg[0],c->arg[1],c->arg[2],c->d.asBytes);
@@ -661,6 +661,15 @@ void UsbPacketReceived(uint8_t *packet, int len)
 			break;
 		case CMD_HID_SIM_TAG:
 			CmdHIDsimTAG(c->arg[0], c->arg[1], 1);
+			break;
+		case CMD_FSK_SIM_TAG:
+			CmdFSKsimTAG(c->arg[0], c->arg[1], c->arg[2], c->d.asBytes);
+			break;
+		case CMD_ASK_SIM_TAG:
+			CmdASKsimTag(c->arg[0], c->arg[1], c->arg[2], c->d.asBytes);
+			break;
+		case CMD_PSK_SIM_TAG:
+			CmdPSKsimTag(c->arg[0], c->arg[1], c->arg[2], c->d.asBytes);
 			break;
 		case CMD_HID_CLONE_TAG:
 			CopyHIDtoT55x7(c->arg[0], c->arg[1], c->arg[2], c->d.asBytes[0]);
@@ -895,6 +904,8 @@ void UsbPacketReceived(uint8_t *packet, int len)
         case CMD_EMV_LOAD_VALUE:
             EMVloadvalue(c->arg[0], c->d.asBytes);  
             break;
+        case CMD_EMV_DUMP_CARD:
+            EMVdumpcard();
 #endif
 
 #ifdef WITH_ICLASS

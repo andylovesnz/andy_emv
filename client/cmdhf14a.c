@@ -1,5 +1,6 @@
 //-----------------------------------------------------------------------------
 // 2011, Merlok
+// 2014, Peter Fillmore
 // Copyright (C) 2010 iZsh <izsh at fail0verflow.com>, Hagen Fritsch
 //
 // This code is licensed to you under the terms of the GNU GPL, version 2 or,
@@ -560,7 +561,7 @@ int CmdHF14ACmdRaw(const char *cmd) {
 					timeout = temp;
 					i+=3;
 					while(cmd[i]!=' ' && cmd[i]!='\0') { i++; }
-					i+=2;
+					i-=2;
 					break;
                 default:
                     PrintAndLog("Invalid option");
@@ -605,6 +606,7 @@ int CmdHF14ACmdRaw(const char *cmd) {
         if(active)
             c.arg[0] |= ISO14A_NO_SELECT;
     }
+
 	if(bTimeout){
 	    #define MAX_TIMEOUT 40542464 	// (2^32-1) * (8*16) / 13560000Hz * 1000ms/s = 
         c.arg[0] |= ISO14A_SET_TIMEOUT;
@@ -612,7 +614,7 @@ int CmdHF14ACmdRaw(const char *cmd) {
             timeout = MAX_TIMEOUT;
             PrintAndLog("Set timeout to 40542 seconds (11.26 hours). The max we can wait for response");
         }
-        c.arg[2] = 13560000 / 1000 / (8*16) * timeout; // timeout in ETUs (time to transfer 1 bit, approx. 9.4 us)
+		c.arg[2] = 13560000 / 1000 / (8*16) * timeout; // timeout in ETUs (time to transfer 1 bit, approx. 9.4 us)
 	}
     if(power)
         c.arg[0] |= ISO14A_NO_DISCONNECT;
@@ -687,6 +689,12 @@ int CmdHF14AEMVloadvalues(const char *Cmd)
     PrintAndLog("loaded %s", filename);
 }
 
+int CmdHF14AEMVdumpcard(const char *Cmd)
+{
+    UsbCommand c = {CMD_EMV_DUMP_CARD, {0, 0, 0}};
+    SendCommand(&c);
+    return 0;
+}
 
 static void waitCmd(uint8_t iSelect)
 {
@@ -727,6 +735,7 @@ static command_t CommandTable[] =
   {"emv",    CmdHF14AEMVTransaction,    0, "Perform EMV Reader Transaction"},
   {"getrng", CmdHF14AEMVgetrng, 0, "get random number from terminal"}, 
   {"loadvalues", CmdHF14AEMVloadvalues, 0, "load EMV tags into device"},
+  {"dumpcard", CmdHF14AEMVdumpcard, 0, "Dump current card values"}, 
   {NULL, NULL, 0, NULL}
 };
 

@@ -22,5 +22,11 @@
 #include "emvutil.h"
 #include "emvcard.h"
 
- 
+#define VISA_DCVV           0
+#define VISA_CVN17          1
+#define VISA_FDDA           2
+#define VISA_EMV            3
+
+#define MASTERCARD_MSR      0
+#define MASTERCARD_MCHIP    1 
 #endif

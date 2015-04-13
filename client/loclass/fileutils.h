@@ -38,6 +38,9 @@
 
 #ifndef FILEUTILS_H
 #define FILEUTILS_H
+
+#ifndef ON_DEVICE
+
 /**
  * @brief Utility function to save data to a file. This method takes a preferred name, but if that
  * file already exists, it tries with another name until it finds something suitable.
@@ -50,6 +53,8 @@
  */
 int saveFile(const char *preferredName, const char *suffix, const void* data, size_t datalen);
 
+int fileExists(const char *filename);
+#endif //ON_DEVICE
 
 /**
  * Utility function to print to console. This is used consistently within the library instead
@@ -59,5 +64,4 @@ int saveFile(const char *preferredName, const char *suffix, const void* data, si
  * @param fmt
  */
 void prnlog(char *fmt, ...);
-int fileExists(const char *filename);
 #endif // FILEUTILS_H

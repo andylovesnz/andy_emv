@@ -11,12 +11,12 @@ APP_INCLUDES = apps.h
 
 #remove one of the following defines and comment out the relevant line
 #in the next section to remove that particular feature from compilation  
-APP_CFLAGS	= -DWITH_LF -DWITH_ISO15693 -DWITH_ISO14443a -DWITH_ISO14443b -DWITH_ICLASS -DWITH_LEGICRF -DWITH_HITAG  -DWITH_CRC -fno-strict-aliasing -DWITH_EMV
+APP_CFLAGS	= -DWITH_LF -DWITH_ISO15693 -DWITH_ISO14443a -DWITH_ISO14443b -DWITH_ICLASS -DWITH_LEGICRF -DWITH_HITAG -DWITH_EMV -DWITH_CRC -DON_DEVICE -fno-strict-aliasing -ffunction-sections -fdata-sections
 #-DWITH_LCD 
 
 #SRC_LCD = fonts.c LCD.c
 SRC_LF = lfops.c hitag2.c lfsampling.c
-SRC_ISO15693 = iso15693.c iso15693tools.c 
+SRC_ISO15693 = iso15693.c iso15693tools.c
 SRC_ISO14443a = epa.c iso14443a.c mifareutil.c mifarecmd.c mifaresniff.c
 SRC_ISO14443b = iso14443.c
 SRC_CRAPTO1 = crapto1.c crypto1.c des.c aes.c 
@@ -45,9 +45,8 @@ ARMSRC = fpgaloader.c \
 	legic_prng.c \
 	iclass.c \
 	BigBuf.c \
+	optimized_cipher.c \
     $(SRC_EMV)
-    
-
 # stdint.h provided locally until GCC 4.5 becomes C99 compliant
 APP_CFLAGS += -I.
 
@@ -56,7 +55,8 @@ $(CFLAGS) += -g3 -gdwarf2
 # Do not move this inclusion before the definition of {THUMB,ASM,ARM}SRC
 include ../common/Makefile.common
 
-OBJS = $(OBJDIR)/osimage.s19 $(OBJDIR)/fpgaimage.s19
+OBJS = $(OBJDIR)/osimage.s19 
+#$(OBJDIR)/fpgaimage.s19
 
 all: $(OBJS)
 
@@ -69,11 +69,11 @@ $(OBJDIR)/fpga_hf.o: fpga_hf.bit
 $(OBJDIR)/fullimage.elf: $(VERSIONOBJ) $(OBJDIR)/fpga_lf.o $(OBJDIR)/fpga_hf.o $(THUMBOBJ) $(ARMOBJ)
 	$(CC) $(LDFLAGS) -Wl,-T,ldscript,-Map,$(patsubst %.elf,%.map,$@) -o $@ $^ $(LIBS)
 
-$(OBJDIR)/fpgaimage.elf: $(OBJDIR)/fullimage.elf
-	$(OBJCOPY) -F elf32-littlearm --only-section .fpgaimage $^ $@  
+#$(OBJDIR)/fpgaimage.elf: $(OBJDIR)/fullimage.elf
+#	$(OBJCOPY) -F elf32-littlearm --only-section .fpgaimage $^ $@  
 
 $(OBJDIR)/osimage.elf: $(OBJDIR)/fullimage.elf
-	$(OBJCOPY) -F elf32-littlearm --remove-section .fpgaimage $^ $@
+	$(OBJCOPY) -F elf32-littlearm $^ $@
 
 tarbin: $(OBJS)
 	$(TAR) $(TARFLAGS) ../proxmark3-$(platform)-bin.tar $(OBJS:%=armsrc/%) $(OBJS:%.s19=armsrc/%.elf)

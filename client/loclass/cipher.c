@@ -39,14 +39,14 @@
 
 #include "cipher.h"
 #include "cipherutils.h"
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <time.h>
-//#include "fileutils.h"
-uint8_t keytable[] = { 0,0,0,0,0,0,0,0};
+#ifndef ON_DEVICE
+#include "fileutils.h"
+#endif
+
 
 /**
 * Definition 1 (Cipher state). A cipher state of iClass s is an element of F 40/2
@@ -221,27 +221,27 @@ void MAC(uint8_t* k, BitstreamIn input, BitstreamOut out)
 	output(k,initState,&input_32_zeroes,&out);
 }
 
-void doMAC(uint8_t *cc_nr_p, int length, uint8_t *div_key_p, uint8_t mac[4])
+void doMAC(uint8_t *cc_nr_p, uint8_t *div_key_p, uint8_t mac[4])
 {
-    uint8_t *cc_nr;
+	uint8_t cc_nr[13] = { 0 };
     uint8_t div_key[8];
-    cc_nr=(uint8_t*)malloc(length+1);
-    memcpy(cc_nr,cc_nr_p,length);
+	//cc_nr=(uint8_t*)malloc(length+1);
+
+	memcpy(cc_nr,cc_nr_p,12);
     memcpy(div_key,div_key_p,8);
 
-    reverse_arraybytes(cc_nr,length);
-    BitstreamIn bitstream = {cc_nr,length * 8,0};
+	reverse_arraybytes(cc_nr,12);
+	BitstreamIn bitstream = {cc_nr,12 * 8,0};
     uint8_t dest []= {0,0,0,0,0,0,0,0};
     BitstreamOut out = { dest, sizeof(dest)*8, 0 };
     MAC(div_key,bitstream, out);
     //The output MAC must also be reversed
     reverse_arraybytes(dest, sizeof(dest));
     memcpy(mac, dest, 4);
-    //printf("Calculated_MAC\t%02x%02x%02x%02x\n", dest[0],dest[1],dest[2],dest[3]);
-    free(cc_nr);
+	//free(cc_nr);
     return;
 }
-
+#ifndef ON_DEVICE
 int testMAC()
 {
 	prnlog("[+] Testing MAC calculation...");
@@ -253,7 +253,7 @@ int testMAC()
 	uint8_t correct_MAC[4] = {0x1d,0x49,0xC9,0xDA};
 
 	uint8_t calculated_mac[4] = {0};
-    doMAC(cc_nr, 12,div_key, calculated_mac);
+	doMAC(cc_nr,div_key, calculated_mac);
 
 	if(memcmp(calculated_mac, correct_MAC,4) == 0)
 	{
@@ -269,3 +269,4 @@ int testMAC()
 
 	return 0;
 }
+#endif

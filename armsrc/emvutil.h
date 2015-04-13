@@ -80,6 +80,7 @@ int emv_emvtags_decode_tag(tlvtag* inputtag, emvtags* currentcard);
 int emv_lookuptag(uint8_t* tag, emvtags* currentcard, uint8_t* outputval, uint8_t* outputvallen);
 //set a tag from external impurt
 int emv_settag(uint32_t tag, uint8_t *datain, emvtags *currentcard) ;
+void dumpCard(emvtags* currentcard);
 
 //generate a valid PDOL list from the returned card value, used in get processing options
 int emv_generateDOL(uint8_t* DOL, uint8_t DOLlen,emvtags* currentcard, uint8_t* DOLoutput, uint8_t* DOLoutputlen);

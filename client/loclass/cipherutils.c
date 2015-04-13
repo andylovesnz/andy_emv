@@ -214,7 +214,7 @@ void printarr_human_readable(char * title, uint8_t* arr, int len)
 // Code for testing below
 //-----------------------------
 
-
+#ifndef ON_DEVICE
 int testBitStream()
 {
 	uint8_t input [] = {0xDE,0xAD,0xBE,0xEF,0xDE,0xAD,0xBE,0xEF};
@@ -287,3 +287,4 @@ int testCipherUtils(void)
 	retval |= testReversedBitstream();
 	return retval;
 }
+#endif

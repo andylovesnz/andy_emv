@@ -22,6 +22,8 @@
 #include "emvdataels.h" //EMV data elements 
 #include "emvtags.h" //EMV card structure
 
+#define DUMP(varname) Dbprintf("%s=", #varname);
+
 int EMV_DBGLEVEL = EMV_DBG_ALL;
 //uint8_t PCB = 0x00; //track Protocol Control Byte externally
 
@@ -388,8 +390,8 @@ int emv_settag(uint32_t tag, uint8_t *datain, emvtags *currentcard){
     //} 
     uint8_t datalen = strlen((const char *)datain) / 2; //length of datain 
     for(int i=0;i<strlen((const char *)datain);i+=2){
-        binarydata[i] |= (char)hex2int(datain[i]) << 4;
-        binarydata[i] |= (char)hex2int(datain[i+1]);
+        binarydata[i/2] |= (char)hex2int(datain[i]) << 4;
+        binarydata[i/2] |= (char)hex2int(datain[i+1]);
     } 
     Dbprintf("BINARYDATA="); 
     Dbhexdump(datalen,(uint8_t *)binarydata,false);
@@ -858,7 +860,7 @@ int emv_generateDOL(uint8_t* DOL, uint8_t DOLlen,emvtags* currentcard,uint8_t* D
             {scannedtaglen=1;}
         memcpy(scannedtag, DOL+i,scannedtaglen);
         //look up tag value and copy
-        Dbhexdump(2,scannedtag,false); 
+        //Dbhexdump(2,scannedtag,false); 
         emv_lookuptag(scannedtag,currentcard,&(DOLoutputbuffer[DOLcounter]),&retrievedtagvallen);
         DOLcounter += (uint8_t)DOL[i+scannedtaglen];
         i += scannedtaglen + 1; 
@@ -1045,9 +1047,11 @@ int emv_emvtags_decode_tag(tlvtag* inputtag, emvtags* currentcard)
         memcpy(currentcard->tag_9F1F, inputtag->value, inputtag->valuelength);
         currentcard->tag_9F1F_len = inputtag->valuelength;}
         if(*(inputtag->tag+1) == 0x32){ 
-        if(!(inputtag->valuelength <= sizeof(currentcard->tag_9F32)))
-            return 1; 
-        memcpy(currentcard->tag_9F32, inputtag->value, inputtag->valuelength);}
+            if(!(inputtag->valuelength <= sizeof(currentcard->tag_9F32)))
+                return 1; 
+            currentcard->tag_9F32_len = inputtag->valuelength; 
+            memcpy(currentcard->tag_9F32, inputtag->value, inputtag->valuelength);
+        }
         if(*(inputtag->tag+1) == 0x34){ 
         if(!(inputtag->valuelength <= sizeof(currentcard->tag_9F34)))
             return 1; 
@@ -1349,76 +1353,6 @@ int emv_decode_field(uint8_t* inputfield,uint16_t inputlength, emvtags *result)
     return 0;
 }
 
-//commands
-/*
-int emv_sendapdu(uint8_t cla, uint8_t ins, uint8_t p1, uint8_t p2, uint8_t lc, uint8_t* data, uint8_t le)
-{
-    uint8_t *answer = emv_get_bigbufptr();  
-    int cmdcounter = 0; 
-    uint8_t apdulength = 0; 
-    if(PCB == 0x00) //first transaction
-        {PCB = 0x02;} 
-    else if(PCB == 0x02){
-        PCB = 0x03;}
-    else if(PCB == 0x03){
-        PCB = 0x02;}
-    if(lc != 0x00) {
-        apdulength = 9+lc; //get length of the packet assume 8 bits for now
-    } 
-    else{
-        apdulength = 8; //no data packet present
-    } 
-        //generate APDU  
-    uint8_t cmd[apdulength]; //buffer for the command
-    cmd[cmdcounter++] = PCB ; //toggle block bit 
-    cmd[cmdcounter++] = cla;
-    cmd[cmdcounter++] = ins;
-    cmd[cmdcounter++] = p1;
-    cmd[cmdcounter++] = p2;
-    if(lc != 0x00) { 
-        cmd[cmdcounter++] = lc;
-        for(int i=cmdcounter;i < (lc+cmdcounter);i++){
-            cmd[i] = *(data+i-cmdcounter);
-        }
-        cmdcounter += lc;
-    }
-    cmd[cmdcounter++] = le;
-    AppendCrc14443a(cmd, cmdcounter);
-    if (EMV_DBGLEVEL >= 1)   
-        Dbprintf("Transmitting...");
-    Dbhexdump(sizeof(cmd), cmd, false); 
-    ReaderTransmit(cmd, sizeof(cmd),NULL);
-    int len = ReaderReceive(answer);
-	if (EMV_DBGLEVEL >= 1)  { 
-            Dbprintf("Received...");
-            Dbhexdump(100, answer,false); 
-    }
-    if(!len)
-	{
-        if (EMV_DBGLEVEL >= 1)   
-            Dbprintf("APDU sending failed, time-out, %u", len);
-        return 2;
-    } 
-    //check the protocol control byte
-    //check if its an I block 
-    if((answer[0] & 0xE2) == 0x02) {}
-    else if((answer[0] & 0xE6) == 0xA2){} //S block
-    else if((answer[0] & 0xC7) == 0xC2){
-        if(answer[0] == 0xF2){
-            //accept frame waiting command
-            uint8_t FWTcommand[4] = {0x00, 0x00, 0x00, 0x00};
-            FWTcommand[0] = 0xF2;
-            FWTcommand[1] |= (0xCF) & answer[1];
-            AppendCrc14443a(FWTcommand,2);
-            ReaderTransmit(FWTcommand, sizeof(FWTcommand), NULL);    
-            //resend the command
-            emv_sendapdu(cla, ins, p1, p2, lc, data, le); 
-        }
-    }
-    return len;
-}
-*/
-
 int emv_select(uint8_t* AID, uint8_t AID_len, void* data)
 {
     uint16_t selectCmd_len = 4 + 1 + AID_len + 1; 
@@ -1463,7 +1397,7 @@ int emv_getprocessingoptions(uint8_t* pdol, uint8_t pdol_len, void* data)
     if(pdol_len > 0){ 
         memcpy(&(processingCmd[7]), pdol, pdol_len);}
     processingCmd[processingCmd_len] = 0x00; 
-    Dbhexdump(processingCmd_len, processingCmd, false); 
+    //Dbhexdump(processingCmd_len, processingCmd, false); 
     return iso14_apdu(processingCmd,processingCmd_len,false, 0, data);
 }
 
@@ -1521,9 +1455,10 @@ int emv_generateAC(uint8_t refcontrolparam, uint8_t* cdolinput, uint8_t cdolinpu
     acCmd[1] = 0xAE;
     acCmd[2] = refcontrolparam;
     acCmd[3] = 0x00; 
-    acCmd[4] = acCmd_len;
+    acCmd[4] = cdolinputlen;
     memcpy(&(acCmd[5]), cdolinput, cdolinputlen);  
     acCmd[acCmd_len-1] = 0x00;
+    Dbhexdump(acCmd_len, acCmd,false); 
     return iso14_apdu(acCmd,acCmd_len,false,0,data);
 }
 
@@ -1620,101 +1555,283 @@ int emv_decodeCVM(uint8_t* CVM, uint8_t CVMlen)
     return 0;
 }
 
-//simulate a emvtags card
-//input is a structure containing values to simulate
-//clones an EMV card 
-
-void emvsnoop()
-{
-    //states
-    int cardSTATE = EMVEMUL_NOFIELD; 
-    int vHf = 0;
-    int res;
-    //uint32_t selTimer = 0;
- 
-    //setup emvtags card vals 
-    /* 
-    struct emvtags cardvals;
-    cardvals.TL = 0x0B;
-    cardvals.T0 = 0x78;
-    cardvals.TA1 = 0x80;
-    cardvals.TB1 = 0x81;
-    cardvals.TC1 = 0x02;
-    cardvals.historicalbytes={0x4B, 0x4F, 0x41, 0x14, 0x11}
-    */
-    //uint32_t selTime = 0; 
-    uint16_t len = 0; 
-    //uint8_t* receivedCmd = emv_get_bigbufptr_recbuf();
-    //uint8_t* response = emv_get_bigbufptr_sendbuf();
-    uint8_t receivedCmd[MAX_FRAME_SIZE];
-    uint8_t receivedCmd_par[MAX_PARITY_SIZE];
- 
-    uint8_t rATQA[] = {0x04,0x00};
-    uint8_t rUIDBCC[] = {0x8F,0x2F,0x27,0xE1, 0x66};
-    uint8_t rSAK[] = {0x28, 0xB4, 0xFC};
-
-    BigBuf_free_keep_EM();
- 
-    clear_trace();
-    set_tracing(TRUE);
+//dump the current card to the console
+void dumpCard(emvtags* currentcard){
+    DUMP(currentcard->ATQA);
+    Dbhexdump(sizeof(currentcard->ATQA), currentcard->ATQA, false);
+    DUMP(currentcard->UID);
+    Dbhexdump(currentcard->UID_len,  currentcard->UID, false);
+    DUMP(currentcard->SAK);
+    Dbhexdump(sizeof(currentcard->SAK),  &currentcard->SAK, false);
+    DUMP(currentcard->ATS);
+    Dbhexdump(currentcard->ATS_len,  currentcard->ATS, false);
+    DUMP(currentcard->UID);
+    Dbhexdump(currentcard->UID_len,  currentcard->UID, false);
     
-    iso14443a_setup(FPGA_HF_ISO14443A_TAGSIM_LISTEN);
-
-    bool finished=FALSE;
-
-    while (!BUTTON_PRESS() && !finished){
-        WDT_HIT();
-        //find reader field
-        if(cardSTATE == EMVEMUL_NOFIELD){
-            vHf = (MAX_ADC_HF_VOLTAGE * AvgAdc(ADC_CHAN_HF)) >> 10;
-            if(vHf > EMV_MINFIELDV){
-                cardSTATE_TO_IDLE();
-                LED_A_ON();
-            }
-        }
-        if(cardSTATE == EMVEMUL_NOFIELD) continue;
-
-        //get data
-        res = EmGetCmd(receivedCmd, &len, receivedCmd_par);
-        if(res == 2) { //field is off
-            cardSTATE = EMVEMUL_NOFIELD;
-            LEDsoff();
-            continue;
-        }
-        else if(res==1){
-            break; // button press
-        }
-
-        if(len==1 && ((receivedCmd[0] == 0x26 && cardSTATE != EMVEMUL_HALTED) || receivedCmd[0] == 0x52)){
-            //selTime = GetTickCount();
-            EmSendCmdEx(rATQA, sizeof(rATQA), (receivedCmd[0] == 0x52));
-            cardSTATE = EMVEMUL_SELECT1;
-            continue;
-        }
-        switch(cardSTATE){
-            case EMVEMUL_NOFIELD:
-            case EMVEMUL_HALTED:
-            case EMVEMUL_IDLE:{
-                LogReceiveTrace(); 
-                break;
-            }
-            case EMVEMUL_SELECT1:{
-                //select all
-                if(len==2 && (receivedCmd[0] == 0x93 && receivedCmd[1] == 0x20)) {
-                    EmSendCmd(rUIDBCC, sizeof(rUIDBCC));
-                    break;
-                }
-                if(len==2 && (receivedCmd[0] == 0x93 && receivedCmd[1] == 0x70 && memcmp(&receivedCmd[2], rUIDBCC, 4) == 0)) {
-                    EmSendCmd(rSAK, sizeof(rSAK));
-                    break;
-                }
-            }
-        }
-    }
-    FpgaWriteConfWord(FPGA_MAJOR_MODE_OFF);
-    LEDsoff();
+    DUMP(currentcard->tag_4F);
+    Dbhexdump(currentcard->tag_4F_len,  currentcard->tag_4F, false);
+    DUMP(currentcard->tag_50);
+    Dbhexdump(currentcard->tag_50_len,  currentcard->tag_50, false);
+    DUMP(currentcard->tag_56);
+    Dbhexdump(currentcard->tag_56_len,  currentcard->tag_56, false);
+    DUMP(currentcard->tag_57);
+    Dbhexdump(currentcard->tag_57_len,  currentcard->tag_57, false);
+    DUMP(currentcard->tag_5A);
+    Dbhexdump(currentcard->tag_5A_len,  currentcard->tag_5A, false);
+    DUMP(currentcard->tag_82);
+    Dbhexdump(sizeof(currentcard->tag_82),  currentcard->tag_82, false);
+    DUMP(currentcard->tag_84);
+    Dbhexdump(currentcard->tag_84_len,  currentcard->tag_84, false);
+    DUMP(currentcard->tag_86);
+    Dbhexdump(currentcard->tag_86_len,  currentcard->tag_86, false);
+    DUMP(currentcard->tag_87);
+    Dbhexdump(1,  currentcard->tag_87, false);
+DUMP(currentcard->tag_88);
+    Dbhexdump(1,  currentcard->tag_88, false);
+DUMP(currentcard->tag_8A);
+    Dbhexdump(2,  currentcard->tag_8A, false); 
+    DUMP(currentcard->tag_8C);
+    Dbhexdump(currentcard->tag_8C_len,  currentcard->tag_8C, false);
+    DUMP(currentcard->tag_8D);
+    Dbhexdump(currentcard->tag_8D_len,  currentcard->tag_8D, false);
+    DUMP(currentcard->tag_8E);
+    Dbhexdump(currentcard->tag_8E_len,  currentcard->tag_8E, false);
+    DUMP(currentcard->tag_8F);
+    Dbhexdump(1,  currentcard->tag_8F, false);   
+    DUMP(currentcard->tag_90);
+    Dbhexdump(currentcard->tag_90_len,  currentcard->tag_90, false);
+    DUMP(currentcard->tag_92);
+    Dbhexdump(currentcard->tag_92_len,  currentcard->tag_92, false);
+    DUMP(currentcard->tag_93);
+    Dbhexdump(currentcard->tag_93_len,  currentcard->tag_93, false);
+    DUMP(currentcard->tag_94);
+    Dbhexdump(currentcard->tag_94_len,  currentcard->tag_94, false);
+    DUMP(currentcard->tag_95);
+    Dbhexdump(5,  currentcard->tag_95, false);
+    DUMP(currentcard->tag_97);
+    Dbhexdump(currentcard->tag_97_len,  currentcard->tag_97, false);
+    DUMP(currentcard->tag_98);
+    Dbhexdump(20, currentcard->tag_98, false);
+    DUMP(currentcard->tag_99);
+    Dbhexdump(currentcard->tag_99_len,  currentcard->tag_99, false);
+    DUMP(currentcard->tag_9A);
+    Dbhexdump(3,  currentcard->tag_9A, false);
+    DUMP(currentcard->tag_9B);
+    Dbhexdump(2,  currentcard->tag_9B, false);
+    DUMP(currentcard->tag_9C);
+    Dbhexdump(1,  currentcard->tag_9C, false);
+    DUMP(currentcard->tag_9D);
+    Dbhexdump(currentcard->tag_9D_len,  currentcard->tag_9D, false);
+    DUMP(currentcard->tag_CD);
+    Dbhexdump(3,  currentcard->tag_CD, false);
+    DUMP(currentcard->tag_CE);
+    Dbhexdump(3,  currentcard->tag_CE, false);
+    DUMP(currentcard->tag_CF);
+    Dbhexdump(3,  currentcard->tag_CF, false);
+    DUMP(currentcard->tag_D7);
+    Dbhexdump(3,  currentcard->tag_D7, false);
+    DUMP(currentcard->tag_D8);
+    Dbhexdump(2,  currentcard->tag_D8, false);
+    DUMP(currentcard->tag_D9);
+    Dbhexdump(currentcard->tag_D9_len,  currentcard->tag_D9, false);
+    DUMP(currentcard->tag_DA);
+    Dbhexdump(2,  currentcard->tag_DA, false);
+    DUMP(currentcard->tag_DB);
+    Dbhexdump(2,  currentcard->tag_DB, false);
+    DUMP(currentcard->tag_DC);
+    Dbhexdump(2,  currentcard->tag_DC, false);
+    DUMP(currentcard->tag_DD);
+    Dbhexdump(2,  currentcard->tag_DD, false);    
+    DUMP(currentcard->tag_AF);
+    Dbhexdump(currentcard->tag_AF_len,  currentcard->tag_AF, false);
+    DUMP(currentcard->tag_5F20);
+    Dbhexdump(currentcard->tag_5F20_len,  currentcard->tag_5F20, false);
+    DUMP(currentcard->tag_5F24);
+    Dbhexdump(3,  currentcard->tag_5F24, false);
+    DUMP(currentcard->tag_5F25);
+    Dbhexdump(3,  currentcard->tag_5F25, false);
+    DUMP(currentcard->tag_5F28);
+    Dbhexdump(2,  currentcard->tag_5F28, false);
+    DUMP(currentcard->tag_5F2A);
+    Dbhexdump(2,  currentcard->tag_5F2A, false);
+    DUMP(currentcard->tag_5F2D);
+    Dbhexdump(currentcard->tag_5F2D_len,  currentcard->tag_5F2D, false);
+    DUMP(currentcard->tag_5F30);
+    Dbhexdump(3,  currentcard->tag_5F30, false);
+    DUMP(currentcard->tag_5F34);
+    Dbhexdump(1,  currentcard->tag_5F34, false);
+    DUMP(currentcard->tag_5F36);
+    Dbhexdump(2,  currentcard->tag_5F36, false);    
+    DUMP(currentcard->tag_5F50);
+    Dbhexdump(currentcard->tag_5F50_len,  currentcard->tag_5F50, false);
+    DUMP(currentcard->tag_5F54);
+    Dbhexdump(currentcard->tag_5F54_len,  currentcard->tag_5F54, false);
+    DUMP(currentcard->tag_9F01);
+    Dbhexdump(6,  currentcard->tag_9F01, false);
+    DUMP(currentcard->tag_9F02);
+    Dbhexdump(6,  currentcard->tag_9F02, false);
+    DUMP(currentcard->tag_9F03);
+    Dbhexdump(6,  currentcard->tag_9F03, false);
+    DUMP(currentcard->tag_9F04);
+    Dbhexdump(4,  currentcard->tag_9F04, false);
+    DUMP(currentcard->tag_9F05);
+    Dbhexdump(currentcard->tag_9F05_len,  currentcard->tag_9F05, false);
+    DUMP(currentcard->tag_9F06);
+    Dbhexdump(currentcard->tag_9F06_len,  currentcard->tag_9F06, false);
+    DUMP(currentcard->tag_9F07);
+    Dbhexdump(2,  currentcard->tag_9F07, false);
+    DUMP(currentcard->tag_9F08);
+    Dbhexdump(2,  currentcard->tag_9F08, false);
+    DUMP(currentcard->tag_9F09);
+    Dbhexdump(2,  currentcard->tag_9F09, false);
+    DUMP(currentcard->tag_9F0B);
+    Dbhexdump(currentcard->tag_9F0B_len,  currentcard->tag_9F0B, false);
+    DUMP(currentcard->tag_9F0D);
+    Dbhexdump(5,  currentcard->tag_9F0D, false);
+    DUMP(currentcard->tag_9F0E);
+    Dbhexdump(5,  currentcard->tag_9F0E, false);
+    DUMP(currentcard->tag_9F0F);
+    Dbhexdump(5,  currentcard->tag_9F0F, false);
+    DUMP(currentcard->tag_9F10);
+    Dbhexdump(currentcard->tag_9F10_len,  currentcard->tag_9F10, false);
+    DUMP(currentcard->tag_9F11);
+    Dbhexdump(1,  currentcard->tag_9F11, false);
+    DUMP(currentcard->tag_9F12);
+    Dbhexdump(currentcard->tag_9F12_len,  currentcard->tag_9F12, false);
+    DUMP(currentcard->tag_9F13);
+    Dbhexdump(2,  currentcard->tag_9F13, false);
+    DUMP(currentcard->tag_9F14);
+    Dbhexdump(1,  currentcard->tag_9F14, false);
+    DUMP(currentcard->tag_9F15);
+    Dbhexdump(2,  currentcard->tag_9F15, false);
+    DUMP(currentcard->tag_9F16);
+    Dbhexdump(15,  currentcard->tag_9F16, false);
+    DUMP(currentcard->tag_9F17);
+    Dbhexdump(1,  currentcard->tag_9F17, false);
+    DUMP(currentcard->tag_9F18);
+    Dbhexdump(4,  currentcard->tag_9F18, false);
+    DUMP(currentcard->tag_9F1A);
+    Dbhexdump(2,  currentcard->tag_9F1A, false);
+    DUMP(currentcard->tag_9F1B);
+    Dbhexdump(4,  currentcard->tag_9F1B, false);
+    DUMP(currentcard->tag_9F1C);
+    Dbhexdump(8,  currentcard->tag_9F1C, false);
+    DUMP(currentcard->tag_9F1D);
+    Dbhexdump(currentcard->tag_9F1D_len,  currentcard->tag_9F1D, false);
+    DUMP(currentcard->tag_9F1E);
+    Dbhexdump(8,  currentcard->tag_9F1E, false);
+    DUMP(currentcard->tag_9F1F);
+    Dbhexdump(currentcard->tag_9F1F_len,  currentcard->tag_9F1F, false);
+    DUMP(currentcard->tag_9F20);
+    Dbhexdump(currentcard->tag_9F20_len,  currentcard->tag_9F20, false);
+    DUMP(currentcard->tag_9F21);
+    Dbhexdump(3,  currentcard->tag_9F1E, false);
+    DUMP(currentcard->tag_9F22);
+    Dbhexdump(1,  currentcard->tag_9F22, false);
+    DUMP(currentcard->tag_9F23);
+    Dbhexdump(1,  currentcard->tag_9F23, false);
+    DUMP(currentcard->tag_9F26);
+    Dbhexdump(8,  currentcard->tag_9F26, false);
+    DUMP(currentcard->tag_9F27);
+    Dbhexdump(1,  currentcard->tag_9F27, false);
+    DUMP(currentcard->tag_9F2D);
+    Dbhexdump(currentcard->tag_9F2D_len,  currentcard->tag_9F2D, false);
+    DUMP(currentcard->tag_9F2E);
+    Dbhexdump(3,  currentcard->tag_9F2E, false);
+    DUMP(currentcard->tag_9F2F);
+    Dbhexdump(currentcard->tag_9F2F_len,  currentcard->tag_9F2F, false);
+    DUMP(currentcard->tag_9F32);
+    Dbhexdump(currentcard->tag_9F32_len,  currentcard->tag_9F32, false);
+    DUMP(currentcard->tag_9F33);
+    Dbhexdump(3,  currentcard->tag_9F33, false);
+    DUMP(currentcard->tag_9F34);
+    Dbhexdump(3,  currentcard->tag_9F34, false);
+    DUMP(currentcard->tag_9F35);
+    Dbhexdump(1,  currentcard->tag_9F35, false);
+    DUMP(currentcard->tag_9F36);
+    Dbhexdump(2,  currentcard->tag_9F36, false);
+    DUMP(currentcard->tag_9F37);
+    Dbhexdump(4,  currentcard->tag_9F37, false);
+    DUMP(currentcard->tag_9F38);
+    Dbhexdump(currentcard->tag_9F38_len,  currentcard->tag_9F38, false);
+    DUMP(currentcard->tag_9F39);
+    Dbhexdump(1,  currentcard->tag_9F39, false);
+    DUMP(currentcard->tag_9F39);
+    Dbhexdump(1,  currentcard->tag_9F39, false);
+    DUMP(currentcard->tag_9F40);
+    Dbhexdump(5,  currentcard->tag_9F40, false);
+    DUMP(currentcard->tag_9F41);
+    Dbhexdump(4,  currentcard->tag_9F41, false);
+    DUMP(currentcard->tag_9F42);
+    Dbhexdump(2,  currentcard->tag_9F42, false);
+    DUMP(currentcard->tag_9F43);
+    Dbhexdump(4,  currentcard->tag_9F43, false);
+    DUMP(currentcard->tag_9F44);
+    Dbhexdump(1,  currentcard->tag_9F44, false);
+    DUMP(currentcard->tag_9F45);
+    Dbhexdump(2,  currentcard->tag_9F45, false);
+    DUMP(currentcard->tag_9F46);
+    Dbhexdump(currentcard->tag_9F46_len,  currentcard->tag_9F46, false);
+    DUMP(currentcard->tag_9F47);
+    Dbhexdump(currentcard->tag_9F47_len,  currentcard->tag_9F47, false);
+    DUMP(currentcard->tag_9F48);
+    Dbhexdump(currentcard->tag_9F48_len,  currentcard->tag_9F48, false);
+    DUMP(currentcard->tag_9F49);
+    Dbhexdump(currentcard->tag_9F49_len,  currentcard->tag_9F49, false);
+    DUMP(currentcard->tag_9F4A);
+    Dbhexdump(1,  currentcard->tag_9F4A, false); 
+    DUMP(currentcard->tag_9F4B);
+    Dbhexdump(currentcard->tag_9F4B_len,  currentcard->tag_9F4B, false);
+    DUMP(currentcard->tag_9F4C);
+    Dbhexdump(8,  currentcard->tag_9F4C, false);
+    DUMP(currentcard->tag_9F4D);
+    Dbhexdump(2,  currentcard->tag_9F4D, false);
+    DUMP(currentcard->tag_9F4E);
+    Dbhexdump(255,  currentcard->tag_9F4E, false);
+    DUMP(currentcard->tag_9F60);
+    Dbhexdump(2,  currentcard->tag_9F60, false);
+    DUMP(currentcard->tag_9F61);
+    Dbhexdump(2,  currentcard->tag_9F61, false);
+    DUMP(currentcard->tag_9F62);
+    Dbhexdump(6,  currentcard->tag_9F62, false);
+    DUMP(currentcard->tag_9F63);
+    Dbhexdump(6,  currentcard->tag_9F63, false);
+    DUMP(currentcard->tag_9F64);
+    Dbhexdump(1,  currentcard->tag_9F64, false);
+    DUMP(currentcard->tag_9F65);
+    Dbhexdump(2,  currentcard->tag_9F65, false);
+    DUMP(currentcard->tag_9F66);
+    Dbhexdump(2,  currentcard->tag_9F66, false);
+    DUMP(currentcard->tag_9F67);
+    Dbhexdump(1,  currentcard->tag_9F67, false);
+    DUMP(currentcard->tag_9F68);
+    Dbhexdump(currentcard->tag_9F68_len,  currentcard->tag_9F68, false);
+    DUMP(currentcard->tag_9F69);
+    Dbhexdump(currentcard->tag_9F69_len,  currentcard->tag_9F69, false);
+    DUMP(currentcard->tag_9F6A);
+    Dbhexdump(8,  currentcard->tag_9F6A, false);
+    DUMP(currentcard->tag_9F6B);
+    Dbhexdump(currentcard->tag_9F6B_len,  currentcard->tag_9F6B, false);
+    DUMP(currentcard->tag_9F6C);
+    Dbhexdump(2,  currentcard->tag_9F6C, false);
+    DUMP(currentcard->tag_61);
+    Dbhexdump(currentcard->tag_61_len,  currentcard->tag_61, false);
+    DUMP(currentcard->tag_A5);
+    Dbhexdump(currentcard->tag_A5_len,  currentcard->tag_A5, false);
+    DUMP(currentcard->tag_DFNAME);
+    Dbhexdump(currentcard->tag_DFNAME_len,  currentcard->tag_DFNAME, false);
+    DUMP(currentcard->tag_70);
+    Dbhexdump(currentcard->tag_70_len,  currentcard->tag_70, false);
+    DUMP(currentcard->tag_77);
+    Dbhexdump(currentcard->tag_77_len,  currentcard->tag_77, false);
+    DUMP(currentcard->tag_80);
+    Dbhexdump(currentcard->tag_80_len,  currentcard->tag_80, false);
+    DUMP(currentcard->tag_91);
+    Dbhexdump(currentcard->tag_91_len,  currentcard->tag_91, false);
+    DUMP(currentcard->tag_BF0C);
+    Dbhexdump(currentcard->tag_BF0C_len,  currentcard->tag_BF0C, false);
+    DUMP(currentcard->tag_DFName);
+    Dbhexdump(currentcard->tag_DFName_len,  currentcard->tag_DFName, false);
 }
-
-
 
 

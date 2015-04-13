@@ -2,6 +2,7 @@
 // Merlok - June 2011, 2012
 // Gerhard de Koning Gans - May 2008
 // Hagen Fritsch - June 2010
+// Peter Fillmore - April 2014
 //
 // This code is licensed to you under the terms of the GNU GPL, version 2 or,
 // at your option, any later version. See the LICENSE.txt file for the text of
@@ -213,6 +214,49 @@ void AppendCrc14443a(uint8_t* data, int len)
 	ComputeCrc14443(CRC_14443_A,data,len,data+len,data+len+1);
 }
 
+//decode the supported frame length from the reader
+//used to set the size of the dynamic buffer in simulating cards
+//RATS=
+//E0
+//Parameter Byte B7-B4 - FSDI, B3-B0 - CardID
+//CRCs
+//FSDI is encoded by:
+//FSDI 0  1  2  3  4  5  6  7   8   9-F
+//FSD  16 24 32 40 48 64 96 128 256 RFU (bytes)
+uint16_t GetReaderLength(uint8_t* rats){
+    uint8_t parameterByte = rats[1];
+    switch((parameterByte >> 4) & 0x0F){
+    case 0:
+        return 16;
+    case 1:
+        return 24;
+    case 2:
+        return 32;
+    case 3:
+        return 40;
+    case 4:
+        return 48;
+    case 5:
+        return 64;
+    case 6:
+        return 96;
+    case 7:
+        return 128;
+    case 8:
+        return 256; 
+    case 9:
+        return 256;
+    case 0xA:
+    case 0xB:
+    case 0xC:
+    case 0xD:
+    case 0xE:
+        return 0; 
+    default:
+        return 256; 
+    }
+}
+ 
 //=============================================================================
 // ISO 14443 Type A - Miller decoder
 //=============================================================================
@@ -923,9 +967,10 @@ bool prepare_allocated_tag_modulation(tag_response_info_t* response_info) {
 //-----------------------------------------------------------------------------
 void SimulateIso14443aTag(int tagType, int uid_1st, int uid_2nd, byte_t* data)
 {
-	uint8_t sak;
-    //bool sendWTX = true; //send a WTX extension
-	// The first response contains the ATQA (note: bytes are transmitted in reverse order).
+	uint8_t sak; //select ACKnowledge
+    uint16_t readerPacketLen = 64; //reader packet length - provided by RATS, default to 64 bytes if RATS not supported
+	
+    // The first response contains the ATQA (note: bytes are transmitted in reverse order).
 	uint8_t atqapacket[2];
 	
 	switch (tagType) {
@@ -960,7 +1005,7 @@ void SimulateIso14443aTag(int tagType, int uid_1st, int uid_2nd, byte_t* data)
 			sak = 0x01;
 		} break;		
 		default: {
-			Dbprintf("Error: unkown tagtype (%d)",tagType);
+			Dbprintf("Error: unknown tag type (%d)",tagType);
 			return;
 		} break;
 	}
@@ -1103,39 +1148,12 @@ uint8_t selectPPSE[] = {
 0x00,0xe0,0x9f,0x66,0x02,0x1f,0x00,0x9f,0x6b,0x13,0x53,0x13,0x58,0x55,0x12,0x49,
 0x66,0x14,0xd1,0x70,0x62,0x01,0x00,0x00,0x00,0x00,0x01,0x00,0x0f,0x9f,0x67,0x01,
 0x03,0x90,0x00,0x7b,0x05};
-/*
-0x70,0x81,0x8d,0x9f,0x6c,0x02,0x00,0x01,
-0x9f,0x62,0x06,0x00,0x00,0x00,0x00,0x01,
-0xc0,0x9f,0x63,0x06,0x00,0x00,0x00,0xf8,
-0x00,0x00,0x56,0x4c,0x42,0x35,0x35,0x35,
-0x35,0x35,0x35,0x35,0x35,0x35,0x35,0x35,
-0x35,0x35,0x35,0x35,0x35,0x5e,0x20,0x2f,
-0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,
-0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,
-0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,
-0x5e,0x31,0x37,0x30,0x36,0x32,0x30,0x31,
-0x30,0x30,0x30,0x30,0x30,0x20,0x20,0x20,
-0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,
-0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,
-0x9f,0x64,0x01,0x03,0x9f,0x65,0x02,0x00,
-0xe0,0x9f,0x66,0x02,0x1f,0x00,0x9f,0x6b,
-0x13,0x53,0x53,0x53,0x53,0x53,0x53,0x53,
-0x53,0xd1,0x70,0x62,0x01,0x00,0x00,0x00,
-0x00,0x01,0x00,0x0f,0x9f,0x67,0x01,0x03,
-0x90,0x00};
-*/
-//,0x00,0x00};
-    //AppendCrc14443a(readRec11, sizeof(readRec11)-2);
-//   uint8_t computeCC[] = {
-//0x77,0x0f,0x9f,0x61,0x02,0x4a,0x49,0x9f,
-//0x60,0x02,0xb8,0xf0,0x9f,0x36,0x02,0x07,
-//0xe0,0x90,0x00};
-	
   
 	BigBuf_free_keep_EM();
     // Allocate 512 bytes for the dynamic modulation, created when the reader queries for it
 	// Such a response is less time critical, so we can prepare them on the fly
-	#define DYNAMIC_RESPONSE_BUFFER_SIZE 256 //max frame size 
+	
+    #define DYNAMIC_RESPONSE_BUFFER_SIZE 256 //max frame size 
 	#define DYNAMIC_MODULATION_BUFFER_SIZE 2 + 9*DYNAMIC_RESPONSE_BUFFER_SIZE //(start and stop bit, 8 bit packet with 1 bit parity
 	
     //uint8_t dynamic_response_buffer[DYNAMIC_RESPONSE_BUFFER_SIZE];
@@ -1244,7 +1262,8 @@ uint8_t selectPPSE[] = {
 		} else if(receivedCmd[0] == 0x60 || receivedCmd[0] == 0x61) {	// Received an authentication request
 			p_response = &responses[AUTH_ANS]; order = AUTH;
 		} else if(receivedCmd[0] == 0xE0) {	// Received a RATS request
-			if (tagType == 1 || tagType == 2) {	// RATS not supported
+		    readerPacketLen = GetReaderLength(receivedCmd); //get length of supported packet   	
+            if (tagType == 1 || tagType == 2) {	// RATS not supported
 				EmSend4bit(CARD_NACK_NA);
 				p_response = NULL;
 			} else {
@@ -1289,21 +1308,10 @@ uint8_t selectPPSE[] = {
                                     break;
                                 case 0xB2: //read record
                                     if(receivedCmd[3] == 0x01 && receivedCmd[4] == 0x0C){
-                                        /* 
-                                        if(sendWTX){ }
-                                        //send a WTX
-                                        if(receivedCmd[0] == 0x02){
-                                            p_response = &responses:
-                                        memcpy(dynamic_response_info.response+1, "\xf0\x01", 2);
-                                        sendWTX = false;
-                                        } else */ {
                                         dynamic_response_info.response_n += 2;
-                                        //p_response = &responses[7]; //order = RATS;
                                         Dbprintf("READ RECORD 1 1"); 
                                         memcpy(dynamic_response_info.response+1, readRec11, sizeof(readRec11));
                                         dynamic_response_info.response_n += sizeof(readRec11);
-                                        //sendWTX = true;
-                                        }
                                     }
                                     break;
                                 }break;
@@ -1359,7 +1367,13 @@ uint8_t selectPPSE[] = {
 				// Add CRC bytes, always used in ISO 14443A-4 compliant cards
 				AppendCrc14443a(dynamic_response_info.response,dynamic_response_info.response_n);
 				dynamic_response_info.response_n += 2;
-        
+                if(dynamic_response_info.response_n > readerPacketLen){ //throw error if our reader doesn't support the send packet length
+                    Dbprintf("Error: tag response is longer then what the reader supports, TODO:implement command chaining");
+					if (tracing) {
+						LogTrace(receivedCmd, Uart.len, Uart.startTime*16 - DELAY_AIR2ARM_AS_TAG, Uart.endTime*16 - DELAY_AIR2ARM_AS_TAG, Uart.parity, TRUE);
+					}
+					break;
+                }
 				if (prepare_tag_modulation(&dynamic_response_info,DYNAMIC_MODULATION_BUFFER_SIZE) == false) {
 					Dbprintf("Error preparing tag response");
 					if (tracing) {
@@ -2114,9 +2128,10 @@ int iso14_apdu(uint8_t *cmd, uint16_t cmd_len,bool useCID, uint8_t CID, void *da
 	// if we received an I- or R(ACK)-Block with a block number equal to the
 	// current block number, toggle the current block number
     
-    if((data_bytes[0] & 0xF2) == 0xF2) //WTX requested
+    while((data_bytes[0] & 0xF2) == 0xF2) //WTX requested
         {
             //Transmit WTX back (what we received)
+            //iso14_apdu(data, len,useCID, CID, data);
             ReaderTransmit(data_bytes, len, NULL);
             //retrieve the result again 
             len = ReaderReceive(data,parity);
@@ -2143,8 +2158,9 @@ void ReaderIso14443a(UsbCommand *c)
 {
 	iso14a_command_t param = c->arg[0];
 	uint8_t *cmd = c->d.asBytes;
-	size_t len = c->arg[1];
-	size_t lenbits = c->arg[2];
+	size_t len = c->arg[1] & 0xffff;
+	size_t lenbits = c->arg[1] >> 16;
+	uint32_t timeout = c->arg[2];
 	uint32_t arg0 = 0;
 	byte_t buf[USB_CMD_DATA_SIZE];
 	uint8_t par[MAX_PARITY_SIZE];
@@ -2169,7 +2185,7 @@ void ReaderIso14443a(UsbCommand *c)
 	}
 
 	if(param & ISO14A_SET_TIMEOUT) {
-		iso14a_set_timeout(c->arg[2]);
+		iso14a_set_timeout(timeout);
 	}
 
 	if(param & ISO14A_APDU) {

@@ -16,41 +16,15 @@
 #include "apps.h"
 #include "emvdataels.h"
 
-//global emvtags struct
-static emvtags currentcard;
+static emvtags currentcard; //use to hold emv tags for the reader/card during communications
 
-//static tUart Uart;
-//static tDemod Demod;
+//load individual tag into current card
 void EMVloadvalue(uint32_t tag, uint8_t *datain){
     //Dbprintf("TAG=%i\n", tag);
     //Dbprintf("DATA=%s\n", datain);
     emv_settag(tag, datain, &currentcard);
 }
 
-/*
-void EMVTest()
-{
-    //iso14443a_setup(FPGA_HF_ISO14443A_READER_LISTEN);
-    uint8_t data[] = {0x6F,0x43,0x84,0x07,0xA0,0x00,0x00,0x00,0x03,0x10,0x10,0xA5,0x38,0x50,0x0C,0x56,0x69,0x73,0x61,0x20,0x50,0x72,0x65,0x70,0x61,0x69,0x64,0x87,0x01,0x01,0x9F,0x38,0x0C,0x9F,0x66,0x04,0x9F,0x02,0x06,0x9F,0x37,0x04,0x5F,0x2A,0x02,0x5F,0x2D,0x02,0x65,0x6E,0x9F,0x11,0x01,0x01,0x9F,0x12,0x0C,0x50,0x6F,0x73,0x74,0x20,0x50,0x72,0x65,0x70,0x61,0x69,0x64,0x90,0x00};
-    EMVFuzz_PPSE(sizeof(data), data); 
-    //EmSendCmdChain(data, 71, 64); 
-    //clonedcard newcard;
-    //EMVQuickClone(&newcard);
-}
-
-void EMVCloneCard()
-{
-    LED_C_OFF();   
-    if(!EMVClone(5,5)){ //5,5 
-        if(EMV_DBGLEVEL >= 1) Dbprintf("Can't select card");
-        return; 
-    }
-    LED_C_ON(); // card has been loaded
-    //now lets SIM
-    LED_B_ON();
-    EMVSim();
-}
-*/
 void EMVReadRecord(uint8_t arg0, uint8_t arg1,emvtags *currentcard)
 {
     uint8_t record = arg0;
@@ -122,10 +96,10 @@ int EMVGetProcessingOptions(uint8_t *PDOL, uint8_t PDOLlen, emvtags* inputcard)
      
     //variables
     tlvtag inputtag; //create the tag structure
-    //perform select 
+    //perform pdol 
     if(!emv_getprocessingoptions(PDOL, PDOLlen, receivedAnswer)){
         if(EMV_DBGLEVEL >= 1) Dbprintf("get processing options failed");
-        return 1; 
+        return 0; 
     }
     //write the result to the provided card 
     //FORMAT 1 received 
@@ -139,20 +113,19 @@ int EMVGetProcessingOptions(uint8_t *PDOL, uint8_t PDOLlen, emvtags* inputcard)
     }
     else if(receivedAnswer[1] == 0x77){
         //decode the 77 template 
-        decode_ber_tlv_item(receivedAnswer+2, &inputtag);
+        decode_ber_tlv_item(receivedAnswer+1, &inputtag);
         //store 82 and 94 tags (AIP, AFL) 
         emv_decode_field(inputtag.value, inputtag.valuelength, &currentcard); 
     } 
     if(EMV_DBGLEVEL >= 2) 
         DbpString("GET PROCESSING OPTIONS COMPLETE");
-    return 0;
+    return 1;
 }
 
 int EMVGetChallenge(emvtags* inputcard)
 {
     uint8_t receivedAnswer[MAX_FRAME_SIZE];
     //uint8_t receivedAnswerPar[MAX_PARITY_SIZE];
-    
     //variables
     //tlvtag inputtag; //create the tag structure
     //perform select 
@@ -160,7 +133,6 @@ int EMVGetChallenge(emvtags* inputcard)
         if(EMV_DBGLEVEL >= 1) Dbprintf("get processing options failed");
         return 1; 
     }
-    //TODO complete function 
     return 0;
 }
 
@@ -193,22 +165,30 @@ int EMVGenerateAC(uint8_t refcontrol, emvtags* inputcard)
     
     return 0;
 }
+
 //function to perform paywave transaction
 //takes in TTQ, amount authorised, unpredicable number and transaction currency code
 int EMV_PaywaveTransaction()
 {
+    uint8_t cardMode = 0;  
+    //determine mode of transaction from TTQ  
+    if((currentcard.tag_9F66[0] & 0x40) == 0x40) {
+        cardMode = VISA_EMV;
+    }
+    else if((currentcard.tag_9F66[0] & 0x20) == 0x20) {
+        cardMode = VISA_FDDA;
+    }
+    else if((currentcard.tag_9F66[0] & 0x80) == 0x80) {
+        if((currentcard.tag_9F66[1] & 0x80) == 1) { //CVN17
+            cardMode = VISA_CVN17;
+        }
+        else{
+            cardMode = VISA_DCVV; 
+            }
+    }
+     
     EMVSelectAID(currentcard.tag_4F,currentcard.tag_4F_len, &currentcard); //perform second AID command
      
-//    //uint8_t *responsebuffer  = emv_get_bigbufptr(); 
-//    tlvtag temptag; //buffer for decoded tags 
-//    //get the current block counter 
-//    //select the AID (Mastercard 
-//    Dbprintf("SELECTING AID..."); 
-//    Dbprintf("AIDlen=%u", currentcard.tag_4F_len); 
-//    Dbhexdump(currentcard.tag_4F_len, currentcard.tag_4F, false); 
-//    EMVSelectAID(currentcard.tag_4F,currentcard.tag_4F_len, &currentcard);  
-//    //Dbhexdump(100,responsebuffer,false); 
-//    
     //get PDOL
     uint8_t pdolcommand[20]; //20 byte buffer for pdol data 
     uint8_t pdolcommandlen = 0; 
@@ -216,120 +196,54 @@ int EMV_PaywaveTransaction()
         emv_generateDOL(currentcard.tag_9F38, currentcard.tag_9F38_len, &currentcard, pdolcommand, &pdolcommandlen); 
     }
     Dbhexdump(pdolcommandlen, pdolcommand,false);
-//    else{
-//        //pdolcommand = NULL; //pdol val is null
-//        pdolcommandlen = 0;
-//    }
+
     if(!EMVGetProcessingOptions(pdolcommand,pdolcommandlen, &currentcard)) {
         if(EMV_DBGLEVEL >= 1) Dbprintf("PDOL failed");
         return 1; 
     }
-//    if(responsebuffer[1] == 0x80) //format 1 data field returned
-//    { 
-//        memcpy(currentcard.tag_82, &responsebuffer[3],2); //copy AIP
-//        currentcard.tag_94_len =  responsebuffer[2]-2; //AFL len
-//        memcpy(currentcard.tag_94, &responsebuffer[5],currentcard.tag_94_len); //copy AFL 
-//    }
-//    else if(responsebuffer[1] == 0x77) //format 2 data field returned
-//    {
-//        decode_ber_tlv_item(&responsebuffer[1], &temptag);
-//        emv_decode_field(temptag.value, temptag.valuelength, &currentcard); 
-//    } 
-//    else
-//    {
-//        //throw an error
-//    }
-//    Dbprintf("AFL=");
-//    Dbhexdump(currentcard.tag_94_len, currentcard.tag_94,false); 
-//    Dbprintf("AIP=");
-//    Dbhexdump(2, currentcard.tag_82, false); 
-//    emv_decodeAIP(currentcard.tag_82); 
+
+    Dbprintf("AFL=");
+    Dbhexdump(currentcard.tag_94_len, currentcard.tag_94,false); 
+    Dbprintf("AIP=");
+    Dbhexdump(2, currentcard.tag_82, false); 
+    emv_decodeAIP(currentcard.tag_82); 
 //    
 //    //decode the AFL list and read records 
-//       
-//    //record, sfi 
-//    EMVReadRecord( 1,1, &currentcard);
-//    Dbhexdump(200, responsebuffer,false); 
-//    EMVReadRecord( 2,1, &currentcard);
-//    Dbhexdump(200, responsebuffer,false); 
-//    EMVReadRecord( 1,2, &currentcard);
-//    Dbhexdump(200, responsebuffer,false); 
-//    EMVReadRecord( 2,2, &currentcard);
-//    Dbhexdump(200, responsebuffer,false); 
-//    EMVReadRecord( 3,2, &currentcard);
-//    Dbhexdump(200, responsebuffer,false); 
-//    EMVReadRecord( 4,2, &currentcard);
-//    Dbhexdump(200, responsebuffer,false); 
-//    EMVReadRecord( 1,3, &currentcard);
-//    Dbhexdump(200, responsebuffer,false); 
-//    EMVReadRecord( 2,3, &currentcard);
-//    Dbhexdump(200, responsebuffer,false); 
-//    EMVReadRecord( 4,2, &currentcard);
-//    EMVReadRecord( 1,3, &currentcard);
-//    Dbhexdump(200, responsebuffer,false); 
-//    //EMVReadRecord( 2,3, &currentcard);
-//    //Dbhexdump(200, responsebuffer,false); 
-//    
-//    //DDA supported, so read more records 
-//    if((currentcard.tag_82[0] & AIP_CDA_SUPPORTED) == AIP_CDA_SUPPORTED){ 
-//        EMVReadRecord( 1,4, &currentcard);
-//        EMVReadRecord( 2,4, &currentcard);
-//    }
-//
-//     
-//   emv_decodeCVM(currentcard.tag_8E, currentcard.tag_8E_len); 
-//    /* get ICC dynamic data */
-//    //if((currentcard.tag_82[0] & AIP_CDA_SUPPORTED) == AIP_CDA_SUPPORTED)
-//    {
-//        //DDA supported, so perform GENERATE AC 
-//        uint8_t cdolcommand[40]; //20 byte buffer for pdol data 
-//        uint8_t cdolcommandlen; 
-//        //generate the iCC UN 
-//        emv_getchallenge();
-//        memcpy(currentcard.tag_9F37,&responsebuffer[1],8); // ICC UN 
-//        memcpy(currentcard.tag_9F4C,&responsebuffer[1],8); // ICC UN 
-//        if(currentcard.tag_8C_len > 0) { 
-//            emv_generateDOL(currentcard.tag_8C, currentcard.tag_8C_len, &currentcard, cdolcommand, &cdolcommandlen); }
-//        else{
-//            //cdolcommand = NULL; //cdol val is null
-//            cdolcommandlen = 0;
-//        }
-//        Dbhexdump(currentcard.tag_8C_len, currentcard.tag_8C,false); 
-//        Dbhexdump(cdolcommandlen, cdolcommand,false); 
-//        emv_generateAC(0x41, cdolcommand,cdolcommandlen);
-//         
-//        Dbhexdump(100, responsebuffer,false); 
-//        //Dbhexdump(200, responsebuffer,false); 
-//       /* 
-//        if(responsebuffer[1] == 0x77) //format 2 data field returned
-//        {
-//            decode_ber_tlv_item(&responsebuffer[1], &temptag);
-//            emv_decode_field(temptag.value, temptag.valuelength, &currentcard); 
-//        }
-//        //generate AC2  
-//        if(currentcard.tag_8D_len > 0) { 
-//            emv_generateDOL(currentcard.tag_8D, currentcard.tag_8D_len, &currentcard, cdolcommand, &cdolcommandlen); }
-//        else{
-//            //cdolcommand = NULL; //cdol val is null
-//            cdolcommandlen = 0;
-//        }
-//        emv_generateAC(0x80, cdolcommand,cdolcommandlen);
-//        
-//        if(responsebuffer[1] == 0x77) //format 2 data field returned
-//        {
-//            decode_ber_tlv_item(&responsebuffer[1], &temptag);
-//            emv_decode_field(temptag.value, temptag.valuelength, &currentcard); 
-//        }
-//    } 
-//    //generate cryptographic checksum
-//    uint8_t udol[4] = {0x00,0x00,0x00,0x00}; 
-//    emv_computecryptogram(udol, sizeof(udol));
-//    if(responsebuffer[1] == 0x77) //format 2 data field returned
-//    {
-//        decode_ber_tlv_item(&responsebuffer[1], &temptag);
-//        emv_decode_field(temptag.value, temptag.valuelength, &currentcard); */ 
-//    } 
-//return 0;    
+    uint8_t i = 0; 
+    uint8_t sfi = 0;
+    uint8_t recordstart = 0; 
+    uint8_t recordend = 0; 
+    if(currentcard.tag_94_len > 0){ 
+        while( i < currentcard.tag_94_len){
+            sfi = (currentcard.tag_94[i++] & 0xF8) >> 3;
+            recordstart = currentcard.tag_94[i++];
+            recordend = currentcard.tag_94[i++];
+            for(int j=recordstart; j<(recordend+1); j++){
+            //read records 
+                EMVReadRecord(j,sfi, &currentcard);
+                //while(responsebuffer[0] == 0xF2) {
+                //    EMVReadRecord(j,sfi, &currentcard);
+                //}
+            }  
+            i++;
+        }
+    }
+    else {
+        EMVReadRecord(1,1,&currentcard);
+        EMVReadRecord(1,2,&currentcard);
+        EMVReadRecord(1,3,&currentcard);
+        EMVReadRecord(2,1,&currentcard);
+        EMVReadRecord(2,2,&currentcard);
+        EMVReadRecord(2,3,&currentcard);
+        EMVReadRecord(3,1,&currentcard);
+        EMVReadRecord(3,3,&currentcard);
+        EMVReadRecord(4,2,&currentcard);
+    }
+    //EMVGetChallenge(&currentcard);
+        //memcpy(currentcard.tag_9F4C,&responsebuffer[1],8); // ICC UN 
+    EMVGenerateAC(0x81,&currentcard);
+
+    Dbprintf("CARDMODE=%i",cardMode);    
     return 0;
 } 
 
@@ -362,21 +276,6 @@ int EMV_PaypassTransaction()
         return 1; 
     }
     
-    //if(responsebuffer[1] == 0x80) //format 1 data field returned
-    //{ 
-    //    memcpy(currentcard.tag_82, &responsebuffer[3],2); //copy AIP
-    //    currentcard.tag_94_len =  responsebuffer[2]-2; //AFL len
-    //    memcpy(currentcard.tag_94, &responsebuffer[5],currentcard.tag_94_len); //copy AFL 
-    //}
-    //else if(responsebuffer[1] == 0x77) //format 2 data field returned
-    //{
-    //    decode_ber_tlv_item(&responsebuffer[1], &temptag);
-    //    emv_decode_field(temptag.value, temptag.valuelength, &currentcard); 
-    //} 
-    //else
-    //{
-    //    //throw an error
-    //}
     Dbprintf("AFL=");
     Dbhexdump(currentcard.tag_94_len, currentcard.tag_94,false); 
     Dbprintf("AIP=");
@@ -384,7 +283,6 @@ int EMV_PaypassTransaction()
     emv_decodeAIP(currentcard.tag_82); 
     
     //decode the AFL list and read records 
-    /*
     uint8_t i = 0; 
     uint8_t sfi = 0;
     uint8_t recordstart = 0; 
@@ -396,30 +294,27 @@ int EMV_PaypassTransaction()
         recordend = currentcard.tag_94[i++];
         for(int j=recordstart; j<(recordend+1); j++){
         //read records 
-            EMVReadRecord(blockcounter, j,sfi, &currentcard);
-            emv_decodePCB(&blockcounter);
-            while(responsebuffer[0] == 0xF2) {
-                EMVReadRecord(blockcounter, j,sfi, &currentcard);
-                emv_decodePCB(&blockcounter);
-            }
+            EMVReadRecord(j,sfi, &currentcard);
+            //while(responsebuffer[0] == 0xF2) {
+            //    EMVReadRecord(j,sfi, &currentcard);
+            //}
         }  
         i++;
     }
-    */
     //record, sfi 
-    EMVReadRecord( 1,1, &currentcard);
-    
-    EMVReadRecord( 1,2, &currentcard);
-    
-    EMVReadRecord( 1,3, &currentcard);
-    
-    EMVReadRecord( 2,3, &currentcard);
+    //EMVReadRecord( 1,1, &currentcard);
+    //
+    //EMVReadRecord( 1,2, &currentcard);
+    //
+    //EMVReadRecord( 1,3, &currentcard);
+    //
+    //EMVReadRecord( 2,3, &currentcard);
     
     //DDA supported, so read more records 
-    if((currentcard.tag_82[0] & AIP_CDA_SUPPORTED) == AIP_CDA_SUPPORTED){ 
-        EMVReadRecord( 1,4, &currentcard);
-        EMVReadRecord( 2,4, &currentcard);
-    }
+    //if((currentcard.tag_82[0] & AIP_CDA_SUPPORTED) == AIP_CDA_SUPPORTED){ 
+    //    EMVReadRecord( 1,4, &currentcard);
+    //    EMVReadRecord( 2,4, &currentcard);
+    //}
 
     /* 
     //lets read records! 
@@ -475,41 +370,14 @@ int EMV_PaypassTransaction()
 void EMVTransaction()
 {
     //params
-    //uint8_t recordNo = arg0;
-    //uint8_t sfi = arg1;
     uint8_t uid[10];
     uint32_t cuid;
-    //uint8_t receivedAnswer[MAX_FRAME_SIZE]; 
-    //variables
-    //tlvtag temptag; //used to buffer decoded tag valuesd  
-   
+       
     //setup stuff
     BigBuf_free();
     clear_trace();
     set_tracing(TRUE);
  
-    //memset(&currentcard, 0x00, sizeof(currentcard)); //set all to zeros 
-    //memcpy(currentcard.tag_9F66,"\x20\x00\x00\x00",4);
-    //memcpy(currentcard.tag_9F66,"\xD7\x20\xC0\x00",4);
-    ////memcpy(currentcard.tag_9F66,"\xC0\x00\x00\x00",2);
-    //memcpy(currentcard.tag_9F02,"\x00\x00\x00\x00\x00\x20",6); //20 dollars 
-    //memcpy(currentcard.tag_9F37, "\x01\x02\x03\x04", 4); //UN 
-    //memcpy(currentcard.tag_5F2A, "\x00\x36",2); //currency code
-    ////CDOL stuff 
-    ////memcpy(currentcard.tag_9F02,"\x00\x00\x00\x00\x00\x20",6);
-    //memcpy(currentcard.tag_9F03,"\x00\x00\x00\x00\x00\x00",6);
-    //memcpy(currentcard.tag_9F1A,"\x00\x36",2); //country code
-    //memcpy(currentcard.tag_95,"\x00\x00\x00\x00\x00",5); //TVR
-    ////memcpy(currentcard.tag_5F2A,"\x00\x36",2);
-    //memcpy(currentcard.tag_9A,"\x14\x04\x01",3); //date
-    //memcpy(currentcard.tag_9C,"\x00",1); //processingcode;
-    //memcpy(currentcard.tag_9F45, "\x00\x00", 2); //Data Authentication Code
-    //memset(currentcard.tag_9F4C,0x00,8); // ICC UN
-    //memcpy(currentcard.tag_9F35,"\x12",1);
-    //memcpy(currentcard.tag_9F34,"\x3F\x00\x00", 3); //CVM 
-      
-    //iso14a_clear_trace();
-    //iso14a_set_tracing(true);
     LED_A_ON();
     LED_B_OFF();
     LED_C_OFF();
@@ -532,8 +400,6 @@ void EMVTransaction()
             EMV_PaywaveTransaction();
         }
         
-        //output the sensitive data
-        //cmd_send(CMD_ACK, 0, 0,0,responsebuffer,100); 
         break;
     }
     if(EMV_DBGLEVEL >= 2) DbpString("EMV TRANSACTION FINISHED");
@@ -541,6 +407,9 @@ void EMVTransaction()
     FpgaWriteConfWord(FPGA_MAJOR_MODE_OFF);
 }
 
+void EMVdumpcard(void){
+    dumpCard(&currentcard);
+} 
 /*
 //EMV clone a card - read up to the max SFI and max records for that SFI
 bool EMVClone(uint8_t maxsfi, uint8_t maxrecord)
