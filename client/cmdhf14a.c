@@ -124,6 +124,8 @@ char* getTagInfo(uint8_t uid) {
 	return manufactureMapping[len-1].desc; 
 }
 
+
+
 int CmdHF14AList(const char *Cmd)
 {
 	PrintAndLog("Deprecated command, use 'hf list 14a' instead");

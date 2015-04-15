@@ -19,6 +19,7 @@ flasher
 version.c
 lua
 luac
+*.swp
 
 fpga/*
 !fpga/tests

@@ -24,6 +24,68 @@
 #include "cmdhfmf.h"
 #include "cmdhfmfu.h"
 #include "protocols.h"
+#include "emvtags.h"
+
+// structure and database for 7816 error codes -> errorcode lookups 
+typedef struct { 
+	uint16_t errorcode;
+	char* desc;
+} errorCode; 
+
+const errorCode errorMapping[] = {
+        //Normal Processing
+    {0x9000, "OK"},
+    {0x6100, "Bytes To Come"},
+    {0x6200, "No information given"},
+    {0x6281, "Part of returned data may be corrupted"},
+    {0x6282, "End of file or record reached before reading Ne bytes"},
+
+    {0x6283, "Selected file deactivated"},
+    {0x6284, "File control information not formatted according to 5.3.3"},
+    {0x6285, "Selected file in termination state"},
+    {0x6286, "No input data available from a sensor on the card"},
+    {0x6300, "No information given"},
+    {0x6381, "File filled up by the last write"},
+    {0x6400, "Execution error"},
+    {0x6401, "Immediate response required by the card"},
+    {0x6500, "No information given"},
+    {0x6581, "Memory failure"},
+    {0x6800, "No information given"},
+    {0x6881, "Logical channel not supported"},
+    {0x6882, "Secure messaging not supported"},
+    {0x6883, "Last command of the chain expected"},
+    {0x6884, "Command chaining not supported"},
+    {0x6900, "No information given"},
+    {0x6981, "Command incompatible with file structure"},
+    {0x6982, "Security status not satisfied"},
+    {0x6983, "Authentication method blocked"},
+    {0x6984, "Reference data not usable"},
+    {0x6985, "Conditions of use not satisfied"},
+    {0x6986, "Command not allowed (no current EF)"},
+    {0x6987, "Expected secure messaging data objects missing"},
+    {0x6988, "Incorrect secure messaging data objects"},
+    {0x6900, "No information given"},
+    {0x6A80, "Incorrect parameters in the command data field"},
+    {0x6A81, "Function not supported"},
+    {0x6A82, "File or application not found"},
+    {0x6A83, "Record not found"},
+    {0x6A84, "Not enough memory space in the file"},
+    {0x6A85, "Nc inconsistent with TLV structure"},
+    {0x6A86, "Incorrect parameters P1-P2"},
+    {0x6A87, "Nc inconsistent with parameters P1-P2"},
+    {0x6A88, "Referenced data or reference data not found (exact meaning depending on the command)"},
+    {0x0000, "Error Code not found"},
+};
+
+char* getErrorInfo(uint16_t decodedcode) {
+	int i;
+	int len = sizeof(errorMapping) / sizeof(errorCode);
+	for ( i = 0; i < len; ++i ) 
+		if(decodedcode == errorMapping[i].errorcode) 
+			return errorMapping[i].desc;
+	//No match, return default
+	return errorMapping[len-1].desc; 
+}
 
 static int CmdHelp(const char *Cmd);
 
@@ -71,36 +133,57 @@ void annotateIso14443a(char *exp, size_t size, uint8_t* cmd, uint8_t cmdsize)
     case ISO14443A_CMD_IBLOCK_SET:
     case ISO14443A_CMD_IBLOCK_CLEAR:
     {
-        if(cmd[1] == 0x80){
-            switch(cmd[2]){
-            case 0x2A:
-                snprintf(exp,size,"COMPUTE CRYPTOGRAPHIC CHECKSUM"); 
+        switch(cmd[1])
+        { 
+            case 0x80:
+            { 
+                switch(cmd[2])
+                {
+                    case 0x2A:
+                        snprintf(exp,size,"COMPUTE CRYPTOGRAPHIC CHECKSUM"); 
+                        break;
+                    case 0xAE:
+                        snprintf(exp,size,"GENERATE AC"); 
+                        break;
+                    case 0xA8:
+                        snprintf(exp,size,"GET PROCESSING OPTIONS"); 
+                        break; 
+                    default:
+                        break; 
+                } 
                 break;
-            case 0xAE:
-                snprintf(exp,size,"GENERATE AC"); 
-                break;
-            case 0xA8:
-                snprintf(exp,size,"GET PROCESSING OPTIONS"); 
-                break; 
-            default:
-                break; 
-            } 
-        }
-        else if(cmd[1] == 0x00){
-            switch(cmd[2]){
-            case 0xB2:
-                snprintf(exp,size,"READ RECORD"); 
-                break;
-            case 0xA4:
-                snprintf(exp,size,"SELECT"); 
-                break;
-            case 0x84:
-                snprintf(exp,size,"GENERATE CHALLENGE"); 
-            default:
+            }
+            case 0x00:
+            {
+                switch(cmd[2])
+                {
+                    case 0xB2:
+                        snprintf(exp,size,"READ RECORD"); 
+                        break;
+                    case 0xA4:
+                        snprintf(exp,size,"SELECT"); 
+                        break;
+                    case 0x84:
+                        snprintf(exp,size,"GENERATE CHALLENGE"); 
+                    default:
+                        break; 
+                }
                 break; 
             }
-        }
-        break;
+            case ISO14443A_WARN_1:
+            case ISO14443A_WARN_2:
+            case ISO14443A_ERROR_1:
+            case ISO14443A_ERROR_2:
+            case ISO14443A_ERROR_3:
+            case ISO14443A_ERROR_4: 
+            {
+                snprintf(exp,size,getErrorInfo((cmd[1]<<8) | cmd[2])); 
+                break;
+            }
+            default:
+                break; 
+        } 
+        break; 
     }	
     case MIFARE_CMD_INC:			snprintf(exp,size,"INC(%d)",cmd[1]); break;
 	case MIFARE_CMD_DEC:			snprintf(exp,size,"DEC(%d)",cmd[1]); break;
@@ -404,6 +487,10 @@ uint16_t printTraceLine(uint16_t tracepos, uint16_t traceLen, uint8_t *trace, ui
 		else if(protocol == ISO_14443B)
 			annotateIso14443b(explanation,sizeof(explanation),frame,data_len);
 	}
+    else { //annotate tag response
+    if (protocol == ISO_14443A)
+        annotateIso14443a(explanation,sizeof(explanation),frame,data_len);
+    }
 
 	int num_lines = MIN((data_len - 1)/16 + 1, 16);
 	for (int j = 0; j < num_lines ; j++) {

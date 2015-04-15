@@ -899,7 +899,7 @@ void UsbPacketReceived(uint8_t *packet, int len)
 			EMVTransaction();
 			break;
         case CMD_EMV_GET_RANDOM_NUM:
-            EMVgetUDOL();
+            //EMVgetUDOL();
             break;
         case CMD_EMV_LOAD_VALUE:
             EMVloadvalue(c->arg[0], c->d.asBytes);  

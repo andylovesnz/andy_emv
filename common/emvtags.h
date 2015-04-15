@@ -12,6 +12,9 @@
 #ifndef __EMVCARD_H
 #define __EMVCARD_H
 
+#include <stdint.h>
+#include <stddef.h>
+
 //structure to hold received/set tag values
 //variable data inputs have length specifiers 
 typedef struct {
@@ -19,7 +22,8 @@ typedef struct {
     uint8_t ATQA[2]; //Answer to Request 
     uint8_t UID_len; 
     uint8_t UID[10]; 
-    uint8_t SAK; 
+    uint8_t SAK1; //SAK for UID 1
+    uint8_t SAK2; //SAK for UID 2
     uint8_t ATS_len; //Answer to select  
     uint8_t ATS[256]; 
     //ATS 

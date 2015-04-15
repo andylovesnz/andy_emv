@@ -28,78 +28,9 @@ uint8_t trigger = 0;
 // the block number for the ISO14443-4 PCB
 static uint8_t iso14_pcb_blocknum = 0;
 
-//
-// ISO14443 timing:
-//
-// minimum time between the start bits of consecutive transfers from reader to tag: 7000 carrier (13.56Mhz) cycles
-#define REQUEST_GUARD_TIME (7000/16 + 1)
-// minimum time between last modulation of tag and next start bit from reader to tag: 1172 carrier cycles 
-#define FRAME_DELAY_TIME_PICC_TO_PCD (1172/16 + 1) 
-// bool LastCommandWasRequest = FALSE;
 
-//
-// Total delays including SSC-Transfers between ARM and FPGA. These are in carrier clock cycles (1/13,56MHz)
-//
-// When the PM acts as reader and is receiving tag data, it takes
-// 3 ticks delay in the AD converter
-// 16 ticks until the modulation detector completes and sets curbit
-// 8 ticks until bit_to_arm is assigned from curbit
-// 8*16 ticks for the transfer from FPGA to ARM
-// 4*16 ticks until we measure the time
-// - 8*16 ticks because we measure the time of the previous transfer 
-#define DELAY_AIR2ARM_AS_READER (3 + 16 + 8 + 8*16 + 4*16 - 8*16) 
-
-// When the PM acts as a reader and is sending, it takes
-// 4*16 ticks until we can write data to the sending hold register
-// 8*16 ticks until the SHR is transferred to the Sending Shift Register
-// 8 ticks until the first transfer starts
-// 8 ticks later the FPGA samples the data
-// 1 tick to assign mod_sig_coil
-#define DELAY_ARM2AIR_AS_READER (4*16 + 8*16 + 8 + 8 + 1)
-
-// When the PM acts as tag and is receiving it takes
-// 2 ticks delay in the RF part (for the first falling edge),
-// 3 ticks for the A/D conversion,
-// 8 ticks on average until the start of the SSC transfer,
-// 8 ticks until the SSC samples the first data
-// 7*16 ticks to complete the transfer from FPGA to ARM
-// 8 ticks until the next ssp_clk rising edge
-// 4*16 ticks until we measure the time 
-// - 8*16 ticks because we measure the time of the previous transfer 
-#define DELAY_AIR2ARM_AS_TAG (2 + 3 + 8 + 8 + 7*16 + 8 + 4*16 - 8*16)
- 
 // The FPGA will report its internal sending delay in
 uint16_t FpgaSendQueueDelay;
-// the 5 first bits are the number of bits buffered in mod_sig_buf
-// the last three bits are the remaining ticks/2 after the mod_sig_buf shift
-#define DELAY_FPGA_QUEUE (FpgaSendQueueDelay<<1)
-
-// When the PM acts as tag and is sending, it takes
-// 4*16 ticks until we can write data to the sending hold register
-// 8*16 ticks until the SHR is transferred to the Sending Shift Register
-// 8 ticks until the first transfer starts
-// 8 ticks later the FPGA samples the data
-// + a varying number of ticks in the FPGA Delay Queue (mod_sig_buf)
-// + 1 tick to assign mod_sig_coil
-#define DELAY_ARM2AIR_AS_TAG (4*16 + 8*16 + 8 + 8 + DELAY_FPGA_QUEUE + 1)
-
-// When the PM acts as sniffer and is receiving tag data, it takes
-// 3 ticks A/D conversion
-// 14 ticks to complete the modulation detection
-// 8 ticks (on average) until the result is stored in to_arm
-// + the delays in transferring data - which is the same for
-// sniffing reader and tag data and therefore not relevant
-#define DELAY_TAG_AIR2ARM_AS_SNIFFER (3 + 14 + 8) 
- 
-// When the PM acts as sniffer and is receiving reader data, it takes
-// 2 ticks delay in analogue RF receiver (for the falling edge of the 
-// start bit, which marks the start of the communication)
-// 3 ticks A/D conversion
-// 8 ticks on average until the data is stored in to_arm.
-// + the delays in transferring data - which is the same for
-// sniffing reader and tag data and therefore not relevant
-#define DELAY_READER_AIR2ARM_AS_SNIFFER (2 + 3 + 8) 
-
 //variables used for timing purposes:
 //these are in ssp_clk cycles:
 static uint32_t NextTransferTime;

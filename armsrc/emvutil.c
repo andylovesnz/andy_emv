@@ -1561,12 +1561,12 @@ void dumpCard(emvtags* currentcard){
     Dbhexdump(sizeof(currentcard->ATQA), currentcard->ATQA, false);
     DUMP(currentcard->UID);
     Dbhexdump(currentcard->UID_len,  currentcard->UID, false);
-    DUMP(currentcard->SAK);
-    Dbhexdump(sizeof(currentcard->SAK),  &currentcard->SAK, false);
+    DUMP(currentcard->SAK1);
+    Dbhexdump(1,  &currentcard->SAK1, false);
+    DUMP(currentcard->SAK2);
+    Dbhexdump(1,  &currentcard->SAK2, false);
     DUMP(currentcard->ATS);
     Dbhexdump(currentcard->ATS_len,  currentcard->ATS, false);
-    DUMP(currentcard->UID);
-    Dbhexdump(currentcard->UID_len,  currentcard->UID, false);
     
     DUMP(currentcard->tag_4F);
     Dbhexdump(currentcard->tag_4F_len,  currentcard->tag_4F, false);

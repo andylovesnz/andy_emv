@@ -116,6 +116,14 @@ NXP/Philips CUSTOM COMMANDS
 #define ISO14443A_CMD_IBLOCK_SET     0x03
 #define ISO14443A_CMD_WTX           0xF2
 
+#define ISO14443A_WARN_1        0x62
+#define ISO14443A_WARN_2        0x63
+#define ISO14443A_ERROR_1       0x64
+#define ISO14443A_ERROR_2       0x65
+#define ISO14443A_ERROR_3       0x68
+#define ISO14443A_ERROR_4       0x69
+#define ISO14443A_ERROR_5       0x6A
+
 #define MIFARE_AUTH_KEYA	    0x60
 #define MIFARE_AUTH_KEYB	    0x61
 #define MIFARE_MAGICWUPC1	    0x40

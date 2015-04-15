@@ -100,8 +100,7 @@ CMDSRCS = 	nonce2key/crapto1.c\
 			cmdscript.c\
 			pm3_bitlib.c\
 			aes.c\
-			protocols.c\
-
+			protocols.c
 
 COREOBJS = $(CORESRCS:%.c=$(OBJDIR)/%.o)
 CMDOBJS = $(CMDSRCS:%.c=$(OBJDIR)/%.o)
