@@ -50,7 +50,7 @@ ARMSRC = fpgaloader.c \
 # stdint.h provided locally until GCC 4.5 becomes C99 compliant
 APP_CFLAGS += -I.
 
-$(CFLAGS) += -g3 -gdwarf2
+CFLAGS += -g3 -gdwarf2
 
 # Do not move this inclusion before the definition of {THUMB,ASM,ARM}SRC
 include ../common/Makefile.common
