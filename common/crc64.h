@@ -1,20 +1,14 @@
 //-----------------------------------------------------------------------------
-// Copyright (C) 2010 iZsh <izsh at fail0verflow.com>
-//
 // This code is licensed to you under the terms of the GNU GPL, version 2 or,
 // at your option, any later version. See the LICENSE.txt file for the text of
 // the license.
 //-----------------------------------------------------------------------------
-// Low frequency HID commands
+// CRC64 ECMA
 //-----------------------------------------------------------------------------
 
-#ifndef CMDLFHID_H__
-#define CMDLFHID_H__
+#ifndef __CRC64_H
+#define __CRC64_H
 
-int CmdLFHID(const char *Cmd);
-//int CmdHIDDemod(const char *Cmd);
-int CmdHIDDemodFSK(const char *Cmd);
-int CmdHIDSim(const char *Cmd);
-int CmdHIDClone(const char *Cmd);
+void crc64 (const uint8_t *data, const size_t len, uint64_t *crc) ;
 
 #endif

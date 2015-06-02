@@ -68,6 +68,7 @@ CMDSRCS = 	nonce2key/crapto1.c\
 			mifarehost.c\
 			crc.c \
 			crc16.c \
+			crc64.c \
 			iso14443crc.c \
 			iso15693tools.c \
 			data.c \
@@ -100,7 +101,8 @@ CMDSRCS = 	nonce2key/crapto1.c\
 			cmdscript.c\
 			pm3_bitlib.c\
 			aes.c\
-			protocols.c
+			protocols.c\
+			sha1.c\
 
 COREOBJS = $(CORESRCS:%.c=$(OBJDIR)/%.o)
 CMDOBJS = $(CMDSRCS:%.c=$(OBJDIR)/%.o)

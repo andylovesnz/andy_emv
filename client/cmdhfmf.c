@@ -547,7 +547,7 @@ int CmdHF14AMfNested(const char *Cmd)
 	uint8_t trgKeyType = 0;
 	uint8_t SectorsCnt = 0;
 	uint8_t key[6] = {0, 0, 0, 0, 0, 0};
-	uint8_t keyBlock[13*6];
+	uint8_t keyBlock[14*6];
 	uint64_t key64 = 0;
 	bool transferToEml = false;
 	
@@ -1200,7 +1200,7 @@ int CmdHF14AMfELoad(const char *Cmd)
 
 	len = param_getstr(Cmd,nameParamNo,filename);
 	
-	if (len > FILE_PATH_SIZE) len = FILE_PATH_SIZE;
+	if (len > FILE_PATH_SIZE - 4) len = FILE_PATH_SIZE - 4;
 
 	fnameptr += len;
 
@@ -1299,17 +1299,20 @@ int CmdHF14AMfESave(const char *Cmd)
 
 	len = param_getstr(Cmd,nameParamNo,filename);
 	
-	if (len > FILE_PATH_SIZE) len = FILE_PATH_SIZE;
+	if (len > FILE_PATH_SIZE - 4) len = FILE_PATH_SIZE - 4;
 	
 	// user supplied filename?
 	if (len < 1) {
 		// get filename (UID from memory)
 		if (mfEmlGetMem(buf, 0, 1)) {
 			PrintAndLog("Can\'t get UID from block: %d", 0);
-			sprintf(filename, "dump.eml"); 
+			len = sprintf(fnameptr, "dump");
+			fnameptr += len;
 		}
-		for (j = 0; j < 7; j++, fnameptr += 2)
-			sprintf(fnameptr, "%02X", buf[j]); 
+		else {
+			for (j = 0; j < 7; j++, fnameptr += 2)
+				sprintf(fnameptr, "%02X", buf[j]);
+		}
 	} else {
 		fnameptr += len;
 	}
@@ -1499,16 +1502,16 @@ int CmdHF14AMfCSetUID(const char *Cmd)
 
 int CmdHF14AMfCSetBlk(const char *Cmd)
 {
-	uint8_t uid[8] = {0x00};
 	uint8_t memBlock[16] = {0x00};
 	uint8_t blockNo = 0;
+	bool wipeCard = FALSE;
 	int res;
 
 	if (strlen(Cmd) < 1 || param_getchar(Cmd, 0) == 'h') {
-		PrintAndLog("Usage:  hf mf csetblk <block number> <block data (32 hex symbols)>");
+		PrintAndLog("Usage:  hf mf csetblk <block number> <block data (32 hex symbols)> [w]");
 		PrintAndLog("sample:  hf mf csetblk 1 01020304050607080910111213141516");
-		PrintAndLog("Set block data for magic Chinese card (only works with!!!)");
-		PrintAndLog("If you want wipe card then add 'w' into command line. \n");
+		PrintAndLog("Set block data for magic Chinese card (only works with such cards)");
+		PrintAndLog("If you also want wipe the card then add 'w' at the end of the command line");
 		return 0;
 	}	
 
@@ -1519,14 +1522,15 @@ int CmdHF14AMfCSetBlk(const char *Cmd)
 		return 1;
 	}
 
+	char ctmp = param_getchar(Cmd, 2);
+	wipeCard = (ctmp == 'w' || ctmp == 'W');
 	PrintAndLog("--block number:%2d data:%s", blockNo, sprint_hex(memBlock, 16));
 
-	res = mfCSetBlock(blockNo, memBlock, uid, 0, CSETBLOCK_SINGLE_OPER);
+	res = mfCSetBlock(blockNo, memBlock, NULL, wipeCard, CSETBLOCK_SINGLE_OPER);
 	if (res) {
-			PrintAndLog("Can't write block. error=%d", res);
-			return 1;
-		}
-	
+		PrintAndLog("Can't write block. error=%d", res);
+		return 1;
+	}
 	return 0;
 }
 
@@ -1571,7 +1575,7 @@ int CmdHF14AMfCLoad(const char *Cmd)
 		return 0;
 	} else {
 		len = strlen(Cmd);
-		if (len > FILE_PATH_SIZE) len = FILE_PATH_SIZE;
+		if (len > FILE_PATH_SIZE - 4) len = FILE_PATH_SIZE - 4;
 
 		memcpy(filename, Cmd, len);
 		fnameptr += len;
@@ -1591,6 +1595,7 @@ int CmdHF14AMfCLoad(const char *Cmd)
 			memset(buf, 0, sizeof(buf));
 			
 			if (fgets(buf, sizeof(buf), f) == NULL) {
+				fclose(f);
 				PrintAndLog("File reading error.");
 				return 2;
 			}
@@ -1599,6 +1604,7 @@ int CmdHF14AMfCLoad(const char *Cmd)
 				if(strlen(buf) && feof(f))
 					break;
 				PrintAndLog("File content error. Block data must include 32 HEX symbols");
+				fclose(f);
 				return 2;
 			}
 			for (i = 0; i < 32; i += 2)
@@ -1637,7 +1643,7 @@ int CmdHF14AMfCGetBlk(const char *Cmd) {
 	if (strlen(Cmd) < 1 || param_getchar(Cmd, 0) == 'h') {
 		PrintAndLog("Usage:  hf mf cgetblk <block number>");
 		PrintAndLog("sample:  hf mf cgetblk 1");
-		PrintAndLog("Get block data from magic Chinese card (only works with!!!)\n");
+		PrintAndLog("Get block data from magic Chinese card (only works with such cards)\n");
 		return 0;
 	}	
 
@@ -1664,7 +1670,7 @@ int CmdHF14AMfCGetSc(const char *Cmd) {
 	if (strlen(Cmd) < 1 || param_getchar(Cmd, 0) == 'h') {
 		PrintAndLog("Usage:  hf mf cgetsc <sector number>");
 		PrintAndLog("sample:  hf mf cgetsc 0");
-		PrintAndLog("Get sector data from magic Chinese card (only works with!!!)\n");
+		PrintAndLog("Get sector data from magic Chinese card (only works with such cards)\n");
 		return 0;
 	}	
 
@@ -1738,16 +1744,19 @@ int CmdHF14AMfCSave(const char *Cmd) {
 		return 0;
 	} else {
 		len = strlen(Cmd);
-		if (len > FILE_PATH_SIZE) len = FILE_PATH_SIZE;
+		if (len > FILE_PATH_SIZE - 4) len = FILE_PATH_SIZE - 4;
 	
 		if (len < 1) {
 			// get filename
 			if (mfCGetBlock(0, buf, CSETBLOCK_SINGLE_OPER)) {
 				PrintAndLog("Cant get block: %d", 0);
-				return 1;
+				len = sprintf(fnameptr, "dump");
+				fnameptr += len;
 			}
-			for (j = 0; j < 7; j++, fnameptr += 2)
-				sprintf(fnameptr, "%02x", buf[j]); 
+			else {
+				for (j = 0; j < 7; j++, fnameptr += 2)
+					sprintf(fnameptr, "%02x", buf[j]); 
+			}
 		} else {
 			memcpy(filename, Cmd, len);
 			fnameptr += len;
