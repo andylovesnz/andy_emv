@@ -200,6 +200,12 @@ int HFiClassReader(const char *Cmd, bool loop, bool verbose)
 		if (!loop) break;
 	}
 	return 0;
+
+}
+
+int CmdHFiClassReader(const char *Cmd)
+{
+	return HFiClassReader(Cmd, true, true);
 }
 
 int CmdHFiClassReader(const char *Cmd)
