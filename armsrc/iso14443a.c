@@ -1043,6 +1043,10 @@ void SimulateIso14443aTag(int tagType, int uid_1st, int uid_2nd, byte_t* data)
         allocatedtaglen += responses[i].response_n;
     }
 //uint8_t selectOrder = 0; 
+// Response to PPSE:
+// AID: A0000000041010
+// MasterCard
+// Application Priority Indicator: 1
 uint8_t selectPPSE[] = {
 0x6f,0x2f,0x84,0x0e,0x32,0x50,0x41,0x59,
 0x2e,0x53,0x59,0x53,0x2e,0x44,0x44,0x46,
