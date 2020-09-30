@@ -21,4 +21,6 @@ typedef unsigned char byte_t;
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
+#define RAMFUNC __attribute((long_call, section(".ramfunc")))
+
 #endif
