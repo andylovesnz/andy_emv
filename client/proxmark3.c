@@ -21,7 +21,6 @@
 #include "proxgui.h"
 #include "cmdmain.h"
 #include "uart.h"
-#include "messages.h"
 #include "ui.h"
 
 static serial_port sp;
