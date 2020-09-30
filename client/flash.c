@@ -305,7 +305,7 @@ static int get_proxmark_state(uint32_t *state)
 }
 
 // Enter the bootloader to be able to start flashing
-static int enter_bootloader(void)
+static int enter_bootloader(char *serial_port_name)
 {
 	uint32_t state;
 
@@ -339,7 +339,8 @@ static int enter_bootloader(void)
     msleep(100);
 		CloseProxmark();
 
-		fprintf(stderr,"Waiting for Proxmark to reappear on USB...");
+		fprintf(stderr,"Waiting for Proxmark to reappear on ");
+		fprintf(stderr,serial_port_name);
     do {
 			sleep(1);
 			fprintf(stderr, ".");
@@ -365,11 +366,11 @@ static int wait_for_ack(void)
 }
 
 // Go into flashing mode
-int flash_start_flashing(int enable_bl_writes)
+int flash_start_flashing(int enable_bl_writes,char *serial_port_name)
 {
 	uint32_t state;
 
-	if (enter_bootloader() < 0)
+	if (enter_bootloader(serial_port_name) < 0)
 		return -1;
 
 	if (get_proxmark_state(&state) < 0)
