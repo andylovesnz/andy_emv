@@ -23,4 +23,6 @@ typedef unsigned char byte_t;
 
 #define RAMFUNC __attribute((long_call, section(".ramfunc")))
 
+#define RAMFUNC __attribute((long_call, section(".ramfunc")))
+
 #endif
