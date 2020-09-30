@@ -377,7 +377,7 @@ int CmdHF14AMfDump(const char *Cmd)
 				}
 				if (isOK) {
 					fwrite ( data, 1, 16, fout );
-                    PrintAndLog("Dumped card data into 'dumpkeys.bin'");
+                    PrintAndLog("Dumped card data into 'dumpdata.bin'");
 
 				}
 				else {
