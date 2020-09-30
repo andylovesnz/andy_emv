@@ -24,6 +24,7 @@
 #include "cmdlf.h"
 #include "cmdmain.h"
 #include "util.h"
+#include "cmdscript.h"
 
 
 
@@ -52,6 +53,7 @@ static command_t CommandTable[] =
   {"hw",    CmdHW,    1, "{ Hardware commands... }"},
   {"lf",    CmdLF,    1, "{ LF commands... }"},
   {"quit",  CmdQuit,  1, "Quit program"},
+  {"script", CmdScript,   1,"Run script"},
   {NULL, NULL, 0, NULL}
 };
 
