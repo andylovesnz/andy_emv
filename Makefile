@@ -28,8 +28,10 @@ help:
 	@echo + flash-both    - Make armsrc and flash os and fpga image
 	@echo + flash-all     - Make bootrom and armsrc and flash bootrom, os and fpga image
 	@echo +	clean         - Clean in bootrom, armsrc and the OS-specific host directory
+	@echo +	custom_cmd         - custom commands support
 
 client: client/all
+
 
 flash-bootrom: bootrom/obj/bootrom.elf $(FLASH_TOOL)
 	$(FLASH_TOOL) $(FLASH_PORT) -b $(subst /,$(PATHSEP),$<)
