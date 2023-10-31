@@ -10,7 +10,7 @@
 ACTION!="add|change", GOTO="mm_usb_device_blacklist_end"
 SUBSYSTEM!="tty", GOTO="mm_ignore"
 
-ATTRS{idVendor}=="2d2d" ATTRS{idProduct}=="504d", ENV{ID_MM_DEVICE_IGNORE}="1" SYMLINK+="pm3-%n"
+ATTRS{idVendor}=="2d2d" ATTRS{idProduct}=="504C", ENV{ID_MM_DEVICE_IGNORE}="1" SYMLINK+="pm3-%n"
 
 LABEL="mm_ignore"
 ATTRS{idVendor}=="2d2d" ATTRS{idProduct}=="504d", ENV{ID_MM_DEVICE_IGNORE}="1"
